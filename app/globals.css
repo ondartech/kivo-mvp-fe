@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Kivo Design Tokens — 3 layers: Primitive → Semantic → Component (DESIGN-TOKENS.md)
+   All values concretized from Design Exploration to implementation-ready.
+   Keep raw hex in :root only; components consume semantic CSS variables. */
+
+@layer base {
+  :root {
+    /* Primitive — neutral (zinc-tinted, not warm beige) */
+    --neutral-0: 0 0% 100%; /* #FFFFFF */
+    --neutral-50: 240 5% 96%; /* #F4F4F5 zinc-100 */
+    --neutral-100: 240 6% 90%; /* #E4E4E7 zinc-200 */
+    --neutral-200: 240 5% 84%; /* #D4D4D8 zinc-300 */
+    --neutral-300: 240 5% 64%; /* #A1A1AA zinc-400 */
+    --neutral-500: 240 4% 46%; /* #71717A zinc-500 */
+    --neutral-700: 240 6% 10%; /* #18181B zinc-900-ish but ink */
+    --neutral-900: 224 20% 15%; /* #1C2333 ink */
+    --neutral-950: 222 30% 7%; /* #0B1220 deep ink */
+
+    /* Primitive — layout */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    --layout-content-max: 1280px;
+    --layout-content-narrow: 960px;
+
+    --elevation-subtle: 0 1px 2px hsl(240 4% 16% / 0.06);
+    --elevation-surface: 0 4px 12px hsl(240 4% 16% / 0.08);
+    --elevation-overlay: 0 8px 24px hsl(240 4% 16% / 0.12);
+
+    /* Semantic — surfaces & text (light) */
+    --background: 40 20% 98%; /* #FDFCFB paper */
+    --foreground: 222 30% 7%; /* ink */
+    --surface: 0 0% 100%;
+    --surface-elevated: 240 5% 96%;
+    --surface-overlay: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 221 100% 55%; /* cobalt focus */
+    --muted: 240 4% 46%;
+    --muted-foreground: 240 5% 64%;
+
+    /* Brand — distinctive, premium, not generic green (DESIGN.md:8.1) */
+    --brand: 222 30% 7%; /* ink #0B1220 */
+    --brand-hover: 224 20% 15%; /* #1C2333 */
+    --brand-active: 222 30% 7%;
+    --brand-foreground: 0 0% 100%;
+
+    /* Semantic states — Financial mapping (DESIGN-TOKENS.md:16) */
+    --success: 160 60% 30%; /* #0E7A4B */
+    --success-subtle: 150 40% 94%; /* #EAF6F0 */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 30 85% 32%; /* #B45309 amber-700 */
+    --warning-subtle: 40 90% 93%; /* #FEF3C7 */
+    --warning-foreground: 30 85% 15%;
+
+    --critical: 350 75% 45%; /* #DC2626 red-600 */
+    --critical-subtle: 355 90% 95%; /* #FEE2E2 */
+    --critical-foreground: 0 0% 100%;
+
+    --info: 221 100% 55%; /* #1E40FF cobalt */
+    --info-subtle: 220 90% 95%; /* #DBEAFE */
+    --info-foreground: 0 0% 100%;
+
+    /* Financial domain (COMPONENTS.md)aliases semantic */
+    --financial-paid: var(--success);
+    --financial-partial: var(--info);
+    --financial-due: var(--warning);
+    --financial-overdue: var(--critical);
+    --financial-pending: 240 5% 64%;
+    --financial-failed: var(--critical);
+
+    /* Invoice document */
+    --invoice-page: 0 0% 100%;
+    --invoice-text: 222 30% 7%;
+    --invoice-muted: 240 4% 46%;
+    --invoice-border: 240 6% 90%;
+    --invoice-accent: 222 30% 7%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Tabular numbers for financial contexts */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Focus */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+/* Utility for money display */
+@layer utilities {
+  .money-display {
+    @apply tabular-nums font-semibold tracking-tight;
+  }
+  .money-compact {
+    @apply tabular-nums font-medium;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "kivo-mvp-fe",
+  "private": true,
+  "config": {
+    "openapiSha": "3DB54B7FB2597433CAE7B0075FC84DF1A66F22CA1D92A21D09B5AB0A9117990B"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "gen:types": "openapi-typescript generated/openapi.json -o generated/openapi.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.6",
+    "@tanstack/react-query": "^5.50",
+    "geist": "^1.3.1",
+    "next": "15.0.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hook-form": "^7.52",
+    "sonner": "^1.5",
+    "zod": "^3.23"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.0",
+    "openapi-typescript": "^7.0",
+    "playwright": "^1.44",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.5",
+    "vitest": "^1.6"
+  }
+}
