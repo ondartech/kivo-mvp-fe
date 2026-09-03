@@ -1,28 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ErrorState } from "@/components/kivo/empty-state";
+import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
 import { customerCreateSchema, type CustomerCreateInput } from "@/features/customers/schema";
 import { useCreateCustomer } from "@/features/customers/api";
 import { toast } from "sonner";
 
-function useDemoOrgId() {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("orgId") ?? localStorage.getItem("organization_id");
-    if (stored) return stored;
-  }
-  return "00000000-0000-0000-0000-000000000000";
-}
-
-export default function NewCustomerPage() {
-  const orgId = useDemoOrgId();
+export default function NewOrgCustomerPage() {
+  const params = useParams<{ orgId: string }>();
+  const orgId = params.orgId as string;
   const router = useRouter();
   const {
     register,
@@ -44,14 +37,13 @@ export default function NewCustomerPage() {
       contacts: [{ name: "", email: "", phone: "", type: "BILLING", is_primary: true }],
     },
   });
+
   const { fields, append, remove } = useFieldArray({ control, name: "contacts" });
   const createMut = useCreateCustomer(orgId);
   const contacts = watch("contacts");
-  const togglePrimary = (idx: number, checked: boolean) => {
-    if (checked) fields.forEach((_: unknown, i: number) => setValue(`contacts.${i}.is_primary` as const, i === idx));
-    else setValue(`contacts.${idx}.is_primary` as const, false);
-  };
+
   const onSubmit = async (data: CustomerCreateInput) => {
+    // Normalize empty strings to null for API
     const payload = {
       ...data,
       email: data.email || null,
@@ -72,20 +64,34 @@ export default function NewCustomerPage() {
       const res: unknown = await createMut.mutateAsync(payload as CustomerCreateInput);
       const id = (res as { id?: string })?.id ?? "";
       toast.success("Customer created");
-      if (id) router.push(`/app/customers/${id}`);
-      else router.push(`/app/customers`);
+      if (id) router.push(`/app/${orgId}/customers/${id}`);
+      else router.push(`/app/${orgId}/customers`);
     } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Create failed";
       const code = (e as { code?: string })?.code;
       if (code === "PRIMARY_ALREADY_EXISTS") toast.error("At most one primary contact is allowed");
-      else toast.error(e instanceof Error ? e.message : "Create failed");
+      else toast.error(msg);
     }
   };
+
+  const togglePrimary = (idx: number, checked: boolean) => {
+    if (checked) {
+      fields.forEach((_: unknown, i: number) => setValue(`contacts.${i}.is_primary` as const, i === idx));
+    } else {
+      setValue(`contacts.${idx}.is_primary` as const, false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-[760px]">
       <PageHeader title="Add customer" description="Fast — name is required, rest can be added later. After creation: Create invoice." />
       <Card>
         <CardContent className="p-5">
-          {createMut.isError ? <div className="mb-4"><ErrorState title="Could not create customer" description={(createMut.error as Error)?.message ?? "An error occurred."} /></div> : null}
+          {createMut.isError ? (
+            <div className="mb-4">
+              <ErrorState title="Could not create customer" description={(createMut.error as Error)?.message ?? "An error occurred."} />
+            </div>
+          ) : null}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <Label htmlFor="name">Name *</Label>
@@ -168,6 +174,7 @@ export default function NewCustomerPage() {
                   </div>
                 ))}
                 {errors.contacts?.message ? <p className="text-xs text-critical">{errors.contacts.message}</p> : null}
+                {errors.contacts?.root?.message ? <p className="text-xs text-critical">{errors.contacts.root.message}</p> : null}
                 <Button type="button" size="sm" variant="outline" onClick={() => append({ name: "", email: "", phone: "", type: "BILLING", is_primary: false })}>
                   Add contact
                 </Button>
@@ -177,13 +184,16 @@ export default function NewCustomerPage() {
               <Button type="submit" disabled={isSubmitting || createMut.isPending}>
                 {createMut.isPending ? "Creating…" : "Create customer"}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => router.push("/app/customers")}>
+              <Button type="button" variant="secondary" onClick={() => router.push(`/app/${orgId}/customers`)}>
                 Cancel
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+      <div className="text-xs text-muted-foreground">
+        On success you’ll be offered <span className="font-medium">Create invoice</span> — pre-fills <code>/app/{orgId}/invoices/new?customerId</code>.
+      </div>
     </div>
   );
 }

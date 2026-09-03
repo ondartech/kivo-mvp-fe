@@ -1,29 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/kivo/empty-state";
 import { customerCreateSchema, type CustomerCreateInput } from "@/features/customers/schema";
-import { useCreateCustomer } from "@/features/customers/api";
+import { useCustomer, usePatchCustomer } from "@/features/customers/api";
 import { toast } from "sonner";
 
-function useDemoOrgId() {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("orgId") ?? localStorage.getItem("organization_id");
-    if (stored) return stored;
-  }
-  return "00000000-0000-0000-0000-000000000000";
-}
-
-export default function NewCustomerPage() {
-  const orgId = useDemoOrgId();
+export default function EditOrgCustomerPage() {
+  const params = useParams<{ orgId: string; customerId: string }>();
+  const orgId = params.orgId as string;
+  const customerId = params.customerId as string;
   const router = useRouter();
+  const { data: customer, isLoading, isError, error } = useCustomer(orgId, customerId);
+
   const {
     register,
     control,
@@ -31,6 +28,7 @@ export default function NewCustomerPage() {
     formState: { errors, isSubmitting },
     watch,
     setValue,
+    reset,
   } = useForm<CustomerCreateInput>({
     resolver: zodResolver(customerCreateSchema),
     defaultValues: {
@@ -41,16 +39,47 @@ export default function NewCustomerPage() {
       tax_identifier: "",
       business_description: "",
       notes: "",
-      contacts: [{ name: "", email: "", phone: "", type: "BILLING", is_primary: true }],
+      contacts: [],
     },
   });
+
   const { fields, append, remove } = useFieldArray({ control, name: "contacts" });
-  const createMut = useCreateCustomer(orgId);
   const contacts = watch("contacts");
+  const patchMut = usePatchCustomer(orgId, customerId);
+
+  useEffect(() => {
+    if (customer) {
+      reset({
+        name: customer.name ?? "",
+        email: customer.email ?? "",
+        phone: customer.phone ?? "",
+        billing_address: (customer.billing_address as { street_name?: string; city?: string; postal_zone?: string; state_code?: string; lga_code?: string; country_code?: string }) ?? {
+          street_name: "",
+          city: "",
+          postal_zone: "",
+          state_code: "",
+          lga_code: "",
+          country_code: "NG",
+        },
+        tax_identifier: customer.tax_identifier ?? "",
+        business_description: (customer as { business_description?: string }).business_description ?? "",
+        notes: customer.notes ?? "",
+        contacts: ((customer as unknown as { contacts?: { name: string; email?: string; phone?: string; type?: string; is_primary?: boolean }[] }).contacts ?? []).map((c) => ({
+          name: c.name,
+          email: c.email ?? "",
+          phone: c.phone ?? "",
+          type: (c.type as "BILLING" | "PRIMARY") ?? "BILLING",
+          is_primary: !!c.is_primary,
+        })),
+      });
+    }
+  }, [customer, reset]);
+
   const togglePrimary = (idx: number, checked: boolean) => {
     if (checked) fields.forEach((_: unknown, i: number) => setValue(`contacts.${i}.is_primary` as const, i === idx));
     else setValue(`contacts.${idx}.is_primary` as const, false);
   };
+
   const onSubmit = async (data: CustomerCreateInput) => {
     const payload = {
       ...data,
@@ -69,77 +98,71 @@ export default function NewCustomerPage() {
       })),
     };
     try {
-      const res: unknown = await createMut.mutateAsync(payload as CustomerCreateInput);
-      const id = (res as { id?: string })?.id ?? "";
-      toast.success("Customer created");
-      if (id) router.push(`/app/customers/${id}`);
-      else router.push(`/app/customers`);
+      await patchMut.mutateAsync(payload as CustomerCreateInput);
+      toast.success("Customer updated");
+      router.push(`/app/${orgId}/customers/${customerId}`);
     } catch (e: unknown) {
       const code = (e as { code?: string })?.code;
       if (code === "PRIMARY_ALREADY_EXISTS") toast.error("At most one primary contact is allowed");
-      else toast.error(e instanceof Error ? e.message : "Create failed");
+      else toast.error(e instanceof Error ? e.message : "Update failed");
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-[760px] space-y-4">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+  if (isError) return <ErrorState title="Could not load customer" description={(error as Error)?.message ?? "An error occurred."} />;
+
   return (
     <div className="space-y-6 max-w-[760px]">
-      <PageHeader title="Add customer" description="Fast — name is required, rest can be added later. After creation: Create invoice." />
+      <PageHeader title="Edit customer" description={customer?.name} />
       <Card>
         <CardContent className="p-5">
-          {createMut.isError ? <div className="mb-4"><ErrorState title="Could not create customer" description={(createMut.error as Error)?.message ?? "An error occurred."} /></div> : null}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <Label htmlFor="name">Name *</Label>
-              <Input id="name" placeholder="Acme Ltd." className="mt-1" {...register("name")} aria-describedby="name-error" />
-              {errors.name ? <p id="name-error" className="text-xs text-critical mt-1">{errors.name.message}</p> : null}
+              <Input id="name" {...register("name")} />
+              {errors.name ? <p className="text-xs text-critical mt-1">{errors.name.message}</p> : null}
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Label>Email</Label>
-                <Input placeholder="sola@acme.ng" className="mt-1" {...register("email")} />
-                {errors.email ? <p className="text-xs text-critical mt-1">{errors.email.message}</p> : null}
+                <Input {...register("email")} />
               </div>
               <div>
                 <Label>Phone</Label>
-                <Input placeholder="0801 234 5678" className="mt-1" {...register("phone")} />
+                <Input {...register("phone")} />
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Label>Street</Label>
-                <Input placeholder="Lekki" className="mt-1" {...register("billing_address.street_name")} />
+                <Input {...register("billing_address.street_name")} />
               </div>
               <div>
                 <Label>City</Label>
-                <Input placeholder="Lagos" className="mt-1" {...register("billing_address.city")} />
+                <Input {...register("billing_address.city")} />
               </div>
               <div>
                 <Label>Postal zone</Label>
-                <Input placeholder="101233" className="mt-1" {...register("billing_address.postal_zone")} />
+                <Input {...register("billing_address.postal_zone")} />
               </div>
               <div>
                 <Label>State code</Label>
-                <Input placeholder="LA" className="mt-1" {...register("billing_address.state_code")} />
+                <Input {...register("billing_address.state_code")} />
               </div>
               <div>
                 <Label>LGA code</Label>
-                <Input placeholder="ETI-OSA" className="mt-1" {...register("billing_address.lga_code")} />
+                <Input {...register("billing_address.lga_code")} />
               </div>
               <div>
                 <Label>Country</Label>
-                <Input placeholder="NG" className="mt-1" {...register("billing_address.country_code")} />
-              </div>
-              <div>
-                <Label>Tax identifier</Label>
-                <Input placeholder="12345678-0001" className="mt-1" {...register("tax_identifier")} />
-              </div>
-              <div>
-                <Label>Tax type</Label>
-                <select className="mt-1 w-full rounded-md border px-3 py-2 text-sm" {...register("tax_identifier_type")}>
-                  <option value="">—</option>
-                  <option value="NG_TIN">NG_TIN</option>
-                  <option value="INCORPORATION_NUMBER">INCORPORATION_NUMBER</option>
-                  <option value="FOREIGN_TAX_ID">FOREIGN_TAX_ID</option>
-                </select>
+                <Input {...register("billing_address.country_code")} />
               </div>
             </div>
             <div>
@@ -155,7 +178,6 @@ export default function NewCustomerPage() {
                       </label>
                     </div>
                     <Input placeholder="Name" {...register(`contacts.${idx}.name` as const)} />
-                    {errors.contacts?.[idx]?.name ? <p className="text-xs text-critical">{errors.contacts[idx]?.name?.message}</p> : null}
                     <div className="grid sm:grid-cols-2 gap-2">
                       <Input placeholder="Email" {...register(`contacts.${idx}.email` as const)} />
                       <Input placeholder="Phone" {...register(`contacts.${idx}.phone` as const)} />
@@ -167,17 +189,16 @@ export default function NewCustomerPage() {
                     ) : null}
                   </div>
                 ))}
-                {errors.contacts?.message ? <p className="text-xs text-critical">{errors.contacts.message}</p> : null}
                 <Button type="button" size="sm" variant="outline" onClick={() => append({ name: "", email: "", phone: "", type: "BILLING", is_primary: false })}>
                   Add contact
                 </Button>
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={isSubmitting || createMut.isPending}>
-                {createMut.isPending ? "Creating…" : "Create customer"}
+              <Button type="submit" disabled={isSubmitting || patchMut.isPending}>
+                {patchMut.isPending ? "Saving…" : "Save"}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => router.push("/app/customers")}>
+              <Button type="button" variant="secondary" onClick={() => router.push(`/app/${orgId}/customers/${customerId}`)}>
                 Cancel
               </Button>
             </div>
