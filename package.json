@@ -2,7 +2,7 @@
   "name": "kivo-mvp-fe",
   "private": true,
   "config": {
-    "openapiSha": "3DB54B7FB2597433CAE7B0075FC84DF1A66F22CA1D92A21D09B5AB0A9117990B"
+    "openapiSha": "7B9E0AF26CD58E45F7026FF697F28A07ECD85C635E6E057E3F1303DBE6B8A35D"
   },
   "scripts": {
     "dev": "next dev",
