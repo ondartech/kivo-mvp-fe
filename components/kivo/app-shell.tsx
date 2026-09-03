@@ -23,6 +23,7 @@ const nav = [
   { label: "Receivables", href: "/app/receivables" },
   { label: "Payments", href: "/app/payments" },
   { label: "Settings", href: "/app/settings/business" },
+  { label: "Team", href: "/app/settings/team" },
 ];
 
 export function AppShell({ children, orgId = "org_demo" }: { children: React.ReactNode; orgId?: string }) {
