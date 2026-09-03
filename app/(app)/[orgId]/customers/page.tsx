@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,16 +14,6 @@ import { formatMoney } from "@/lib/money";
 import { useCustomers, useArchiveCustomer } from "@/features/customers/api";
 import { toast } from "sonner";
 
-// Demo org fallback — in real app this comes from AppShell /auth/me. For 360 demo we keep localStorage orgId if present.
-function useDemoOrgId(): string {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("orgId") ?? localStorage.getItem("organization_id");
-    if (stored) return stored;
-  }
-  // fallback demo UUID — BE will 404 if not exists, which maps to EmptyState with CTA
-  return "00000000-0000-0000-0000-000000000000";
-}
-
 function useDebounced<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -33,18 +23,15 @@ function useDebounced<T>(value: T, delay = 300): T {
   return debounced;
 }
 
-export default function CustomersPage() {
-  const orgId = useDemoOrgId();
+export default function OrgCustomersPage() {
+  const params = useParams<{ orgId: string }>();
+  const orgId = params.orgId as string;
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string | undefined>(undefined);
   const debouncedQ = useDebounced(q, 300);
   const [cursor, setCursor] = useState<string | null>(null);
-
-  // Reset cursor when q/status changes
   const queryQ = useMemo(() => debouncedQ.trim() || undefined, [debouncedQ]);
-  useEffect(() => {
-    setCursor(null);
-  }, [queryQ, status]);
+  useEffect(() => setCursor(null), [queryQ, status]);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useCustomers(orgId, {
     q: queryQ,
@@ -53,21 +40,18 @@ export default function CustomersPage() {
     limit: 20,
     sort: "normalized_name:asc",
   });
-
   const archiveMut = useArchiveCustomer(orgId);
   const router = useRouter();
-
   const customers = data?.data ?? [];
   const nextCursor = data?.next_cursor ?? null;
 
   const handleArchive = async (id: string, name: string) => {
-    if (!confirm(`Archive ${name}? Past invoices remain readable.`)) return;
+    if (!confirm(`Archive ${name}?`)) return;
     try {
       await archiveMut.mutateAsync(id);
       toast.success(`${name} archived`);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Archive failed";
-      toast.error(msg);
+      toast.error(e instanceof Error ? e.message : "Archive failed");
     }
   };
 
@@ -77,12 +61,11 @@ export default function CustomersPage() {
         title="Customers"
         description="Long-term data asset — Customer → invoices → outstanding → activity."
         actions={
-          <Link href="/app/customers/new">
+          <Link href={`/app/${orgId}/customers/new`}>
             <Button>Add customer</Button>
           </Link>
         }
       />
-
       <div className="flex flex-wrap gap-2 items-center">
         <Input
           placeholder="Search customer · name, email, phone"
@@ -96,21 +79,18 @@ export default function CustomersPage() {
           <button
             onClick={() => setStatus(undefined)}
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${!status ? "bg-brand text-white border-brand" : "bg-neutral-50 border-neutral-200"}`}
-            aria-pressed={!status}
           >
             All
           </button>
           <button
             onClick={() => setStatus("ACTIVE")}
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${status === "ACTIVE" ? "bg-brand text-white border-brand" : "bg-neutral-50 border-neutral-200"}`}
-            aria-pressed={status === "ACTIVE"}
           >
             Active
           </button>
           <button
             onClick={() => setStatus("ARCHIVED")}
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${status === "ARCHIVED" ? "bg-brand text-white border-brand" : "bg-neutral-50 border-neutral-200"}`}
-            aria-pressed={status === "ARCHIVED"}
           >
             Archived
           </button>
@@ -126,19 +106,19 @@ export default function CustomersPage() {
       ) : isError ? (
         <ErrorState
           title="Could not load customers"
-          description={(error as { message?: string })?.message ?? "An error occurred. Please try again."}
+          description={(error as { message?: string })?.message ?? "An error occurred."}
           retry={{ label: "Retry", onClick: () => refetch() }}
         />
       ) : customers.length === 0 && !queryQ ? (
         <EmptyState
           title="No customers yet"
           description="Customers are the starting point for invoices and receivables. Add your first customer to create an invoice."
-          action={{ label: "Add your first customer", href: "/app/customers/new" }}
+          action={{ label: "Add your first customer", href: `/app/${orgId}/customers/new` }}
         />
       ) : customers.length === 0 && queryQ ? (
         <EmptyState
           title="No customers match"
-          description={`No customers match "${queryQ}". Try a different name, email or phone.`}
+          description={`No customers match "${queryQ}".`}
           action={{ label: "Clear search", onClick: () => setQ("") }}
         />
       ) : (
@@ -155,12 +135,9 @@ export default function CustomersPage() {
               {customers.map((c) => (
                 <div key={c.id} className="grid md:grid-cols-12 gap-2 md:gap-4 px-4 py-3 items-center">
                   <div className="md:col-span-4">
-                    <Link href={`/app/customers/${c.id}`} className="font-medium hover:underline">
+                    <Link href={`/app/${orgId}/customers/${c.id}`} className="font-medium hover:underline">
                       {c.name}
                     </Link>
-                    <div className="text-xs text-muted-foreground md:hidden">
-                      {c.email ?? c.phone ?? ""}
-                    </div>
                     {c.status === "ARCHIVED" ? <Badge variant="neutral" className="ml-2">Archived</Badge> : null}
                   </div>
                   <div className="hidden md:block md:col-span-3 text-sm text-muted-foreground truncate">
@@ -171,21 +148,16 @@ export default function CustomersPage() {
                   </div>
                   <div className="md:col-span-1 text-center text-sm">—</div>
                   <div className="md:col-span-2 flex gap-1 justify-end">
-                    <Link href={`/app/customers/${c.id}`}>
+                    <Link href={`/app/${orgId}/customers/${c.id}`}>
                       <Button size="sm" variant="ghost">
                         Open
                       </Button>
                     </Link>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="hidden md:inline-flex"
-                      onClick={() => router.push(`/app/invoices/new?customerId=${c.id}`)}
-                    >
+                    <Button size="sm" variant="secondary" className="hidden md:inline-flex" onClick={() => router.push(`/app/${orgId}/invoices/new?customerId=${c.id}`)}>
                       Create invoice
                     </Button>
                     {c.status === "ACTIVE" ? (
-                      <Button size="sm" variant="ghost" onClick={() => handleArchive(c.id, c.name)} aria-label={`Archive ${c.name}`}>
+                      <Button size="sm" variant="ghost" onClick={() => handleArchive(c.id, c.name)}>
                         Archive
                       </Button>
                     ) : null}
@@ -194,11 +166,8 @@ export default function CustomersPage() {
               ))}
             </div>
           </div>
-
           <div className="flex justify-between items-center">
-            <div className="text-xs text-muted-foreground">
-              {isFetching ? "Updating…" : `${customers.length} customers`}
-            </div>
+            <div className="text-xs text-muted-foreground">{isFetching ? "Updating…" : `${customers.length} customers`}</div>
             <div className="flex gap-2">
               {nextCursor ? (
                 <Button size="sm" variant="outline" onClick={() => setCursor(nextCursor)} disabled={isFetching}>
@@ -214,11 +183,8 @@ export default function CustomersPage() {
           </div>
         </>
       )}
-
       <Card className="border-dashed">
-        <CardContent className="p-3 text-xs text-muted-foreground">
-          Tip: <span className="font-medium">Create invoice</span> pre-fills <code>/app/invoices/new?customerId</code> — verified in <code>KIV-FE-021</code>.
-        </CardContent>
+        <CardContent className="p-3 text-xs text-muted-foreground">Tip: Create invoice pre-fills /app/{orgId}/invoices/new?customerId — KIV-FE-021.</CardContent>
       </Card>
     </div>
   );

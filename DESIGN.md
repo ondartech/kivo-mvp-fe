@@ -894,18 +894,22 @@ max-width: 760px
 └───────────────┴─────────────────────────────────────────────────┘
 ```
 
-MVP may expose only:
+MVP2 exposes (per `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md §13–44` + `KIVO_MVP2 §5`):
 
 ```text
 Dashboard
-Invoices
 Customers
+Projects          — MVP2 (lightweight, no Gantt/budget)
+Quotes            — MVP2 (Accepted → Create Invoice)
+Invoices
 Receivables
 Payments
+Compliance (NRS)  — MVP2 secondary panel, not standalone Reports
+Team              — MVP2 (Owner|Admin|Member, INVITED→ACTIVE)
 Settings
 ```
 
-Mature navigation progressively exposes:
+Mature navigation progressively exposes (beyond MVP2):
 
 ```text
 Projects
@@ -983,26 +987,38 @@ The `More` surface contains lower-frequency sections.
 
 # 17. INFORMATION ARCHITECTURE
 
-## MVP
+## MVP2 (per `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md §13–44` + `KIVO_MVP2 §5`)
 
 ```text
 /app
-├── dashboard
-├── invoices
-│   ├── new
-│   ├── new/review
-│   └── [invoiceId]
+├── dashboard          // owed→attention→insight + NRS pending
 ├── customers
 │   ├── new
-│   └── [customerId]
+│   └── [customerId]   // overview|invoices|payments|activity + Contacts
+├── projects           // MVP2 lightweight — no Expenses tab (cut)
+│   ├── new            // KIV-FE-121
+│   └── [projectId]
+│       ├── overview   // financial_summary Quoted/Invoiced/Collected/Outstanding
+│       ├── milestones // READY_TO_BILL amber
+│       ├── quotes
+│       └── invoices
+├── quotes             // MVP2 — Accepted → Create Invoice
+│   ├── new
+│   └── [quoteId]
+├── invoices
+│   ├── new            // project_id? + NRS state secondary
+│   ├── new/review
+│   └── [invoiceId]    // NRS Panel secondary (APPROVED IRN+QR / PENDING / REJECTED)
 ├── receivables
 ├── payments
+├── compliance/nrs     // MVP2 detail panel only, secondary to financial
+├── team               // MVP2 Owner|Admin|Member INVITED→ACTIVE
 └── settings
-    ├── business
+    ├── business       // + compliance profile (NRS config)
     ├── invoice
     ├── payments
     ├── communications
-    └── subscription
+    └── subscription   // Starter|Business|Professional — Business adds Projects/Quotes/NRS/team.enabled
 ```
 
 Public:
@@ -2074,13 +2090,19 @@ Use a vertical step builder, not a dense rule table.
 
 ---
 
-# 40. PROJECTS — MATURE
+# 40. PROJECTS — MVP2
 
-**Route:** `/app/projects`
+**Route:** `/app/projects`, `/app/projects/new`, `/app/projects/[projectId]`
+
+**Source:** `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md §13–16` + `KIVO — PRODUCT & DOMAIN FOUNDATION.md` + `KIVO_MVP2_ENGINEERING_BACKLOG.md §6.1 KIV-BE-121` + `KIVO × NRS INTEGRATION SPECIFICATION.md`
 
 Purpose:
 
-Connect commercial work to financial outcomes.
+Connect commercial work to financial outcomes — **MVP2: commercial-to-cash foundation**. Project is not task management.
+
+**Status:** MVP2 — `PLANNING → ACTIVE → ON_HOLD → COMPLETED | CANCELLED` + `archived` independent.
+
+Fields (Updated PRD §15): `id, organization_id, customer_id, name, description, status, start_date, target_end_date, currency, created_at, updated_at` + optional `project reference/code`.
 
 List columns:
 
@@ -2088,11 +2110,13 @@ List columns:
 Project
 Customer
 Status
-Expected value
+Quoted
 Invoiced
 Collected
 Outstanding
 ```
+
+Derived financial summary (`Quoted = sum accepted Quote totals; Invoiced = sum Invoice totals where project_id; Collected = sum confirmed Payment allocations; Outstanding = Invoiced − Collected`) — never stored, derived at read time.
 
 Project cards/rows should emphasize:
 
@@ -2101,6 +2125,10 @@ Work → Bill → Collect
 ```
 
 not project-management ceremony.
+
+Empty: `No projects yet → Create your first project` + `Create invoice` contextual next action.
+
+Entitlement: `projects.enabled = Business+` — Starter `POST /projects → 403 ENTITLEMENT_DENIED` (server-side), existing Projects remain readable on downgrade.
 
 ---
 
@@ -2183,20 +2211,19 @@ Do not make Kivo look like a full accounting expense suite unless the product sc
 
 ---
 
-# 44. QUOTES — MATURE
+# 44. QUOTES — MVP2
 
-**Route:** `/app/quotes`
+**Route:** `/app/quotes`, `/app/quotes/new`, `/app/quotes/[quoteId]`
+
+**Source:** `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md §17–20` + `KIVO_MVP2 §6.3 KIV-BE-141` `ConvertQuoteToInvoice` + `KIVO — PRODUCT & DOMAIN FOUNDATION.md`
 
 Quote states:
 
 ```text
-Draft
-Sent
-Accepted
-Rejected
-Expired
-Cancelled
+Draft → Sent → Accepted → (Create Invoice Draft) | Rejected | Expired | Cancelled
 ```
+
+Quote is not a receivable — accepted Quote remains historical commercial evidence, conversion creates **new Invoice identity** (`quote_id` preserved on Invoice, totals recalculated server-side via `calculator.py`).
 
 List:
 
@@ -2213,6 +2240,8 @@ Action
 Primary CTA:
 
 > Create quote
+
+Accepted Quote → primary `Create Invoice` (one click generates Invoice Draft for review before issue).
 
 ---
 
@@ -2338,9 +2367,11 @@ Decision
 
 ---
 
-# 49. NRS / COMPLIANCE — MATURE
+# 49. NRS / COMPLIANCE — MVP2
 
-Compliance is a separate UI dimension from invoice financial state.
+**Source:** `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md §38–44` + `KIVO × NRS INTEGRATION SPECIFICATION.md` + `KIVO_MVP2 §6.4 KIV-BE-221` + `KIVO — PRODUCT & DOMAIN FOUNDATION.md`
+
+Compliance is a **MVP2 first-class capability** — separate UI dimension from invoice financial state.
 
 An invoice can be:
 
@@ -2359,34 +2390,57 @@ Kivo:
 ISSUED
 
 NRS:
-APPROVED
+APPROVED (IRN + QR + CSID evidence)
 ```
 
-Do not collapse NRS status into Invoice status.
+or:
+
+```text
+Kivo:
+ISSUED
+
+NRS:
+REJECTED (reason + Verify CTA)
+```
+
+or:
+
+```text
+Kivo:
+ISSUED
+
+NRS:
+UNKNOWN — verify before resubmit (blocks 409 NRS_STATUS_UNKNOWN_VERIFY_FIRST)
+```
+
+Do not collapse NRS status into Invoice status. NRS never gates viewing existing invoice financial data (`§40 NOT_REQUIRED` can still `issue/send/get paid` with zero NRS interaction).
 
 ---
 
-# 50. NRS STATUS PRESENTATION
+# 50. NRS STATUS PRESENTATION — MVP2
 
-Use a dedicated compliance status component.
+Use a dedicated compliance status component — **secondary to financial state** per `KIVO_MVP2 §6.4`.
 
-States:
+States (minimum 7 — `RECONCILIATION §3`):
 
 ```text
-Not submitted
-Submission pending
-Validated
-Approved
-Rejected
-Resubmission required
+NOT_REQUIRED
+PENDING
+SUBMITTED
+VALIDATED
+APPROVED
+REJECTED
+UNKNOWN (timeout/unknown result)
 ```
+
+Submit: `POST /invoices/{id}/compliance/submit` `Idempotency-Key (org, invoice_id)` `202`.
 
 Rejected example:
 
 > **NRS submission rejected**  
-> The invoice remains recorded in Kivo. Review the compliance issue before resubmitting.
+> The invoice remains recorded in Kivo (`ISSUED` unchanged, totals unchanged). Review the compliance issue before resubmitting — `Verify` first if `UNKNOWN`.
 
-Never imply legal compliance merely because a submission succeeded technically.
+Never imply legal compliance merely because a submission succeeded technically. `REJECTED` never mutates `Invoice.status/totals`.
 
 ---
 
@@ -2503,40 +2557,45 @@ Do not create 15 visible filter controls.
 
 ---
 
-# 55. TEAM & ACCESS — MATURE
+# 55. TEAM & ACCESS — MVP2
 
-**Route:** `/app/team`
+**Route:** `/app/team`, `/app/settings/team`
+
+**Source:** `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md §10–12` `MVP2 Roles Owner|Admin|Member` + `KIVO_MVP2 §6 KIV-BE-031..034` + `KIVO — PRODUCT & DOMAIN FOUNDATION.md`
+
+Team scope: **MVP2 multi-user Organizations** — Membership `INVITED → ACTIVE → SUSPENDED → REMOVED` `UNIQUE(user_id, organization_id)`; historical activity preserved after removal.
+
+MVP2 roles:
+
+```text
+OWNER  — full Organization access
+ADMIN  — operational + configuration, protected Owner-only actions
+MEMBER — operational access to permitted workflows
+```
+
+Mature may add `FINANCE|STAFF|ACCOUNTANT|VIEWER` — **not MVP2**. Advanced RBAC deferred.
 
 List:
 
 ```text
 Name
 Email
-Role
-Status
+Role (Badge: OWNER amber / ADMIN blue / MEMBER gray)
+Status (Badge: INVITED | ACTIVE | SUSPENDED)
 Last active
-Actions
+Actions (invite / change role / remove)
 ```
 
-Mature roles may include:
+Invite flow: `POST /organizations/{id}/members/invitations` → email `sha256 24h` → `Accept` creates `ACTIVE` Membership; last-Owner guard `409 LAST_OWNER_GUARD`.
 
-```text
-OWNER
-ADMIN
-FINANCE
-STAFF
-ACCOUNTANT
-VIEWER
-```
-
-Permission descriptions should be human-readable.
-
-Do not expose raw permission strings as primary UI.
+Permission descriptions should be human-readable. Do not expose raw `ROLE_PERMISSIONS` strings.
 
 Example:
 
-> **Finance**  
-> Can manage payments and receivables. Cannot manage organization security.
+> **Admin**  
+> Can invite members, manage customers, invoices, payments. Cannot archive organization.
+
+Member: `is_primary` contact `superRefine` pattern reused for `role` single-Owner guard.
 
 ---
 
