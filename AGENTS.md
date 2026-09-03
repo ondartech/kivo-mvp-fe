@@ -6,7 +6,7 @@ Operating contract for AI agents in `kivo-mvp-fe` — Next.js App Router consume
 
 ## 2. Instruction Hierarchy
 
-1. System instructions. 2. User request. 3. Nearest `AGENTS.md`. 4. Parent `AGENTS.md`. 5. Architecture (`kivo-docs/` subtree) 6. PRD 7. Existing implementation (Tailwind/shadcn/RHF+Zod/TanStack) 8. Judgment.
+1. System instructions. 2. User request. 3. Nearest `AGENTS.md`. 4. Parent `AGENTS.md`. 5. `DESIGN.md` v2.1 — canonical UI implementation authority (for all visual/interaction/financial-presentation decisions) 6. `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md` verbatim + `KIVO × NRS INTEGRATION SPECIFICATION.md` (financial/compliance truth) 7. Architecture (`kivo-docs/` subtree) 8. Existing implementation (Tailwind/shadcn/RHF+Zod/TanStack) 9. Judgment.
 
 ## 3. Repository Scope
 
@@ -53,9 +53,9 @@ kivo-mvp-fe/
 
 ## 4. Authoritative Documentation
 
-Inspect `kivo-docs/API_CONTRACTS.md` (13 contexts, 65 endpoints, `GET /health` never DB), `kivo-docs/FRONTEND_SPEC.md` (per-page `purpose|route|permissions|components|states|loading|empty|error|interactions`), `kivo-docs/Security.md:9` tenant isolation, `kivo-docs/REPOSITORY.md:3` route groups, `kivo-docs/ADRs/0014` versioning, `kivo-docs/BACKEND_MODULES.md:15` money pyramid, `README.md`.
+Inspect `kivo-docs/API_CONTRACTS.md` (13 contexts, 65 endpoints, `GET /health` never DB), `DESIGN.md` **v2.1 — canonical UI implementation authority** (aligned to `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md` verbatim + `KIVO × NRS INTEGRATION SPECIFICATION.md` + `KIVO_MVP2 §6/§7`), `FRONTEND.md` v1.1 (supporting), `UX.md` v1.1, `SCREENS.md` v1.1, `DESIGN-TOKENS.md` v1.1 (slate for NRS UNKNOWN), `kivo-docs/FRONTEND_SPEC.md` (per-page `purpose|route|permissions|components|states|loading|empty|error|interactions`), `kivo-docs/Security.md:9` tenant isolation, `kivo-docs/REPOSITORY.md:3` route groups, `kivo-docs/ADRs/0014` versioning, `kivo-docs/BACKEND_MODULES.md:15` money pyramid, `KIVO_MVP2_ENGINEERING_BACKLOG.md` §6/§7 full cards, `README.md`.
 
-Source-of-truth: explicit user req → `ADRs/` → `architecture.md` → FE spec. Never invent `grand_total` calc.
+Source-of-truth: explicit user req → `DESIGN.md` v2.1 (UI) + `KIVO — MVP PRODUCT REQUIREMENTS DOCUMENT UPDATED.md` (financial truth, authoritative where it conflicts with Original) → `ADRs/` → `architecture.md` → FE supporting docs. Never invent `grand_total` calc. Agents MUST read `DESIGN.md` as the UI implementation authority for all visual/interaction/financial-presentation decisions — `FRONTEND.md`/`SCREENS.md` are supporting.
 
 ## 5. Core Engineering Principles
 
