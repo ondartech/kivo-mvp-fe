@@ -8,9 +8,9 @@ import { useMe } from "@/features/team/api";
 export default function BusinessSettingsRedirectPage() {
   const router = useRouter();
   const { data, isLoading } = useMe();
-  const orgId = data?.memberships?.find((m) => m.status === "ACTIVE")?.organization_id ?? null;
+  const orgId = data?.memberships?.find((m) => m.status === "ACTIVE")?.organization_id ?? "org_demo";
   useEffect(() => {
-    if (!isLoading && orgId) router.replace(`/app/${orgId}/settings/business`);
+    if (!isLoading && orgId) router.replace(`/${orgId}/settings/business`);
   }, [isLoading, orgId, router]);
   if (isLoading) {
     return (

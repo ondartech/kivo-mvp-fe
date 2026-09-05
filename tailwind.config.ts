@@ -49,6 +49,15 @@ const config: Config = {
           subtle: "hsl(var(--info-subtle))",
           foreground: "hsl(var(--info-foreground))",
         },
+        kivo: {
+          ink: "var(--kivo-ink)",
+          muted: "var(--kivo-muted)",
+          green: "var(--kivo-green)",
+          greenDark: "var(--kivo-green-dark)",
+          greenSoft: "var(--kivo-green-soft)",
+          line: "var(--kivo-line)",
+          cream: "var(--kivo-cream)",
+        },
         neutral: {
           0: "hsl(var(--neutral-0))",
           50: "hsl(var(--neutral-50))",
@@ -77,11 +86,16 @@ const config: Config = {
         md: "var(--radius-md)",
         lg: "var(--radius-lg)",
         xl: "var(--radius-xl)",
+        "2xl": "20px",
+        "3xl": "26px",
       },
       boxShadow: {
         subtle: "var(--elevation-subtle)",
         surface: "var(--elevation-surface)",
         overlay: "var(--elevation-overlay)",
+        soft: "0 24px 70px rgba(31, 51, 34, 0.085)",
+        card: "0 10px 35px rgba(31, 51, 34, 0.07)",
+        shell: "0 30px 90px rgba(31, 51, 34, 0.115)",
       },
       spacing: {
         // ensure 4pt base respected (DESIGN-TOKENS.md)

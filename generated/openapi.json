@@ -693,6 +693,47 @@
         }
       }
     },
+    "/api/v1/auth/invites/accept": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Accept Invite",
+        "operationId": "accept_invite_api_v1_auth_invites_accept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteAcceptReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageRes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{organization_id}/memberships": {
       "get": {
         "tags": [
@@ -859,6 +900,304 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OrgMemberOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organization_id}/memberships/{membership_id}/suspend": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Suspend Membership",
+        "operationId": "suspend_membership_api_v1_organizations__organization_id__memberships__membership_id__suspend_post",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Organization Id"
+            }
+          },
+          {
+            "name": "membership_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Membership Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MembershipSuspendReq"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgMemberOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organization_id}/memberships/{membership_id}/remove": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Remove Membership",
+        "operationId": "remove_membership_api_v1_organizations__organization_id__memberships__membership_id__remove_post",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Organization Id"
+            }
+          },
+          {
+            "name": "membership_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Membership Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MembershipRemoveReq"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgMemberOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organization_id}/invites": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Create Invite",
+        "operationId": "create_invite_api_v1_organizations__organization_id__invites_post",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Organization Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "List Invites",
+        "operationId": "list_invites_api_v1_organizations__organization_id__invites_get",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Organization Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteListRes"
                 }
               }
             }
@@ -9786,6 +10125,19 @@
             ],
             "title": "State"
           },
+          "lga": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lga",
+            "description": "LGA freeform \u2264100, required when country=NG and Nigerian state supplied (KIV-BE-021)"
+          },
           "postal_code": {
             "anyOf": [
               {
@@ -10654,6 +11006,7 @@
               }
             ],
             "title": "Discount Total",
+            "description": "Decimal string; JSON number deprecated",
             "default": "0.00"
           },
           "charge_total": {
@@ -10668,6 +11021,7 @@
               }
             ],
             "title": "Charge Total",
+            "description": "Decimal string; JSON number deprecated",
             "default": "0.00"
           },
           "currency": {
@@ -11449,6 +11803,10 @@
               }
             ]
           },
+          "classification": {
+            "type": "string",
+            "title": "Classification"
+          },
           "tax_identifier": {
             "anyOf": [
               {
@@ -11459,6 +11817,28 @@
               }
             ],
             "title": "Tax Identifier"
+          },
+          "tax_identifier_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Identifier Type"
+          },
+          "business_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Description"
           },
           "notes": {
             "anyOf": [
@@ -11514,7 +11894,10 @@
           "email",
           "phone",
           "billing_address",
+          "classification",
           "tax_identifier",
+          "tax_identifier_type",
+          "business_description",
           "notes",
           "status",
           "archived_at",
@@ -11707,6 +12090,10 @@
               }
             ]
           },
+          "classification": {
+            "type": "string",
+            "title": "Classification"
+          },
           "tax_identifier": {
             "anyOf": [
               {
@@ -11717,6 +12104,28 @@
               }
             ],
             "title": "Tax Identifier"
+          },
+          "tax_identifier_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Identifier Type"
+          },
+          "business_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Description"
           },
           "notes": {
             "anyOf": [
@@ -11765,7 +12174,10 @@
           "email",
           "phone",
           "billing_address",
+          "classification",
           "tax_identifier",
+          "tax_identifier_type",
+          "business_description",
           "notes",
           "status",
           "archived_at",
@@ -11823,6 +12235,23 @@
               }
             ]
           },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "INDIVIDUAL",
+                  "BUSINESS",
+                  "GOVERNMENT",
+                  "FOREIGN"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
           "tax_identifier": {
             "anyOf": [
               {
@@ -11834,6 +12263,34 @@
               }
             ],
             "title": "Tax Identifier"
+          },
+          "tax_identifier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "NG_TIN",
+                  "INCORPORATION_NUMBER",
+                  "FOREIGN_TAX_ID"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Identifier Type"
+          },
+          "business_description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Description"
           },
           "notes": {
             "anyOf": [
@@ -11894,6 +12351,17 @@
               }
             ]
           },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "INDIVIDUAL",
+              "BUSINESS",
+              "GOVERNMENT",
+              "FOREIGN"
+            ],
+            "title": "Classification",
+            "default": "INDIVIDUAL"
+          },
           "tax_identifier": {
             "anyOf": [
               {
@@ -11905,6 +12373,34 @@
               }
             ],
             "title": "Tax Identifier"
+          },
+          "tax_identifier_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "NG_TIN",
+                  "INCORPORATION_NUMBER",
+                  "FOREIGN_TAX_ID"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Identifier Type"
+          },
+          "business_description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Description"
           },
           "notes": {
             "anyOf": [
@@ -12362,6 +12858,122 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "InviteAcceptReq": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "InviteAcceptReq",
+        "description": "Public accept \u2014 token is the auth credential (rate-limited 5/min/IP)."
+      },
+      "InviteListRes": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/InviteOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "InviteListRes"
+      },
+      "InviteOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "normalized_email": {
+            "type": "string",
+            "title": "Normalized Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "invited_by_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Invited By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "email",
+          "normalized_email",
+          "role",
+          "status",
+          "expires_at",
+          "invited_by_user_id",
+          "created_at"
+        ],
+        "title": "InviteOut"
+      },
+      "InviteReq": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "MEMBER"
+            ],
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "InviteReq",
+        "description": "Invite \u2014 ADMIN|MEMBER only (OWNER via org creation, STAFF not in MVP2)."
+      },
       "InvoiceAllocationSummaryOut": {
         "properties": {
           "invoice_id": {
@@ -12502,7 +13114,8 @@
                 "type": "null"
               }
             ],
-            "title": "Quantity"
+            "title": "Quantity",
+            "description": "Decimal string; JSON number deprecated"
           },
           "unit_price": {
             "anyOf": [
@@ -12518,7 +13131,8 @@
                 "type": "null"
               }
             ],
-            "title": "Unit Price"
+            "title": "Unit Price",
+            "description": "Decimal string; JSON number deprecated"
           },
           "discount_amount": {
             "anyOf": [
@@ -12534,7 +13148,8 @@
                 "type": "null"
               }
             ],
-            "title": "Discount Amount"
+            "title": "Discount Amount",
+            "description": "Decimal string; JSON number deprecated"
           },
           "tax_rate": {
             "anyOf": [
@@ -12551,7 +13166,8 @@
                 "type": "null"
               }
             ],
-            "title": "Tax Rate"
+            "title": "Tax Rate",
+            "description": "Decimal string; JSON number deprecated"
           },
           "product_service_id": {
             "anyOf": [
@@ -12602,7 +13218,7 @@
               }
             ],
             "title": "Quantity",
-            "description": "Decimal string >0"
+            "description": "Decimal string >0; JSON number deprecated, will be rejected in v2"
           },
           "unit_price": {
             "anyOf": [
@@ -12616,7 +13232,7 @@
               }
             ],
             "title": "Unit Price",
-            "description": "Decimal string >=0"
+            "description": "Decimal string >=0; JSON number deprecated, will be rejected in v2"
           },
           "discount_amount": {
             "anyOf": [
@@ -12630,6 +13246,7 @@
               }
             ],
             "title": "Discount Amount",
+            "description": "Decimal string; JSON number deprecated",
             "default": "0.00"
           },
           "tax_rate": {
@@ -12648,7 +13265,7 @@
               }
             ],
             "title": "Tax Rate",
-            "description": "0..1 e.g. 0.075"
+            "description": "0..1 e.g. 0.075; Decimal string preferred; JSON number deprecated"
           },
           "product_service_id": {
             "anyOf": [
@@ -12968,7 +13585,8 @@
                 "type": "null"
               }
             ],
-            "title": "Discount Total"
+            "title": "Discount Total",
+            "description": "Decimal string; JSON number deprecated"
           },
           "charge_total": {
             "anyOf": [
@@ -12984,7 +13602,8 @@
                 "type": "null"
               }
             ],
-            "title": "Charge Total"
+            "title": "Charge Total",
+            "description": "Decimal string; JSON number deprecated"
           },
           "line_items": {
             "anyOf": [
@@ -13192,6 +13811,7 @@
               }
             ],
             "title": "Discount Total",
+            "description": "Decimal string; JSON number deprecated",
             "default": "0.00"
           },
           "charge_total": {
@@ -13206,6 +13826,7 @@
               }
             ],
             "title": "Charge Total",
+            "description": "Decimal string; JSON number deprecated",
             "default": "0.00"
           },
           "line_items": {
@@ -13509,7 +14130,11 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "OWNER"
+                "enum": [
+                  "OWNER",
+                  "ADMIN",
+                  "MEMBER"
+                ]
               },
               {
                 "type": "null"
@@ -13521,7 +14146,11 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "REVOKED"
+                "enum": [
+                  "REVOKED",
+                  "SUSPENDED",
+                  "REMOVED"
+                ]
               },
               {
                 "type": "null"
@@ -13533,7 +14162,47 @@
         "additionalProperties": false,
         "type": "object",
         "title": "MembershipPatchReq",
-        "description": "MVP allow-list: `OWNER` is the only role that exists, `REVOKED` the only transition.\n\nMature widens `role` to the full matrix (Security.md:2.1) \u2014 additive in `v1`."
+        "description": "MVP v2 allow-list: `OWNER|ADMIN|MEMBER` + `REVOKED` (KIV-BE-033, legacy).\n\n`ADMIN\u2192OWNER` is 403 at API boundary (members:change_role OWNER-only) and 403 defensively in service.\nLast-Owner guard is 409 LAST_OWNER_GUARD.\nKIV-BE-034: SUSPENDED/REMOVED are now via POST /suspend|/remove (not PATCH), but PATCH keeps REVOKED alias for one sprint."
+      },
+      "MembershipRemoveReq": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MembershipRemoveReq",
+        "description": "KIV-BE-034: remove \u2192 REMOVED (terminal, audit-preserving)."
+      },
+      "MembershipSuspendReq": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MembershipSuspendReq",
+        "description": "KIV-BE-034: suspend \u2192 SUSPENDED (reversible), audit-preserving."
       },
       "MerchantPaymentSettingsOut": {
         "properties": {
