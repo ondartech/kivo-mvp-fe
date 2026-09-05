@@ -11,7 +11,7 @@ import { startGoogleOAuth } from "@/features/auth/api";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "";
@@ -133,5 +133,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen grid place-items-center bg-background px-4"><div className="h-8 w-8 rounded-full border-2 border-zinc-200 border-t-zinc-900 animate-spin" /></div>}>
+      <LoginInner />
+    </React.Suspense>
   );
 }

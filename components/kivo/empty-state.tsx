@@ -36,23 +36,40 @@ export function EmptyState({
 export function ErrorState({
   title,
   description,
+  code,
+  requestId,
   retry,
 }: {
   title: string;
   description: string;
+  code?: string;
+  requestId?: string;
   retry?: { label: string; onClick: () => void };
 }) {
   return (
     <div className="rounded-lg border border-critical/20 bg-critical-subtle p-6">
-      <h3 className="text-sm font-semibold text-critical">{title}</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-critical">{title}</h3>
+        {code ? (
+          <span className="rounded bg-critical/10 px-1.5 py-0.5 font-mono text-[10px] text-critical">
+            {code}
+          </span>
+        ) : null}
+      </div>
       <p className="mt-1 text-sm text-critical/90">{description}</p>
-      {retry ? (
-        <div className="mt-3">
+      <div className="mt-3 flex items-center justify-between">
+        {retry ? (
           <Button variant="outline" size="sm" onClick={retry.onClick}>
             {retry.label}
           </Button>
-        </div>
-      ) : null}
+        ) : <div />}
+        {requestId ? (
+          <span className="font-mono text-xs text-critical/70">Ref: {requestId.slice(0, 12)}…</span>
+        ) : null}
+      </div>
     </div>
   );
 }
+
+// Re-export comprehensive error view primitives
+export * from "./error-view";

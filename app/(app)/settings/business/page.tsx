@@ -1,42 +1,34 @@
-import { PageHeader } from "@/components/kivo/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+"use client";
 
-export default function BusinessSettingsPage() {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/kivo/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/kivo/empty-state";
+import { useMe } from "@/features/team/api";
+
+/** Legacy route without orgId — resolves workspace then redirects to canonical /app/[orgId]/settings/business */
+export default function BusinessSettingsRedirectPage() {
+  const router = useRouter();
+  const { data, isLoading } = useMe();
+  const orgId = data?.memberships?.find((m) => m.status === "ACTIVE")?.organization_id ?? null;
+
+  useEffect(() => {
+    if (!isLoading && orgId) router.replace(`/app/${orgId}/settings/business`);
+  }, [isLoading, orgId, router]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 max-w-[880px]">
+        <PageHeader title="Business Identity" />
+        <Skeleton className="h-14 w-full" />
+      </div>
+    );
+  }
   return (
     <div className="space-y-6 max-w-[880px]">
-      <PageHeader title="Business" description="Business identity used in invoices — name, address, logo. Frozen in snapshots after issue." />
-      <Card>
-        <CardContent className="p-5 space-y-4">
-          <div>
-            <Label>Business name</Label>
-            <Input defaultValue="Maro Labs" className="mt-1" />
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Contact email</Label>
-              <Input defaultValue="hello@maro.ng" className="mt-1" />
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input defaultValue="0801 234 5678" className="mt-1" />
-            </div>
-          </div>
-          <div>
-            <Label>Address</Label>
-            <Input defaultValue="Lekki Phase 1, Lagos" className="mt-1" />
-          </div>
-          <div className="rounded-lg border border-dashed p-4 text-sm">
-            <div className="font-medium">Logo</div>
-            <div className="text-muted-foreground text-xs">PNG · 1:1 · Stored as Blob SAS logos/&#123;orgId&#125;/ · Shown in invoice PDF.</div>
-            <Button variant="secondary" size="sm" className="mt-2">
-              Upload logo
-            </Button>
-          </div>
-          <Button>Save business</Button>
-        </CardContent>
-      </Card>
+      <PageHeader title="Business Identity" description="Business identity used in invoices — name, address, logo. Frozen in snapshots after issue." />
+      <EmptyState title="No organization" description="Join or create an organization to manage business identity." />
     </div>
   );
 }
