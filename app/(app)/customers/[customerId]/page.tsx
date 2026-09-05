@@ -1,224 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/kivo/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
-import { formatMoney } from "@/lib/money";
-import { useCustomer, useCustomerBalance, useCustomerHistory, useArchiveCustomer, useRestoreCustomer, useContacts } from "@/features/customers/api";
-import { toast } from "sonner";
+import { EmptyState } from "@/components/kivo/empty-state";
+import { useMe } from "@/features/team/api";
 
-function useDemoOrgId() {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("orgId") ?? localStorage.getItem("organization_id");
-    if (stored) return stored;
-  }
-  return "00000000-0000-0000-0000-000000000000";
-}
-
-export default function CustomerDetailPage() {
+export default function CustomerDetailRedirectPage() {
   const params = useParams<{ customerId: string }>();
-  const customerId = params.customerId as string;
-  const orgId = useDemoOrgId();
   const router = useRouter();
-  const [tab, setTab] = useState<"overview" | "contacts" | "history">("overview");
-  const { data: customer, isLoading, isError, error, refetch } = useCustomer(orgId, customerId);
-  const { data: balance } = useCustomerBalance(orgId, customerId);
-  const { data: historyData, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: historyLoading } = useCustomerHistory(orgId, customerId);
-  const { data: contactsData } = useContacts(orgId, customerId);
-  const archiveMut = useArchiveCustomer(orgId);
-  const restoreMut = useRestoreCustomer(orgId);
-
+  const { data, isLoading } = useMe();
+  const orgId = data?.memberships?.find((m) => m.status === "ACTIVE")?.organization_id ?? "org_demo";
+  useEffect(() => {
+    if (!isLoading && orgId) router.replace(`/${orgId}/customers/${params.customerId}`);
+  }, [isLoading, orgId, router, params.customerId]);
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-[1100px]">
-        <Skeleton className="h-10 w-48" />
-        <div className="grid md:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
+        <PageHeader title="Customer" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
   }
-  if (isError) {
-    const code = (error as { code?: string })?.code;
-    const notFound = code === "CUSTOMER_NOT_FOUND" || (error as Error)?.message?.includes("404");
-    if (notFound) {
-      return (
-        <div className="max-w-[760px] mx-auto py-10">
-          <EmptyState title="Customer not found in this workspace" description="This customer does not exist in this workspace or you do not have access." action={{ label: "Back to customers", href: "/app/customers" }} />
-        </div>
-      );
-    }
-    return <ErrorState title="Could not load customer" description={(error as Error)?.message ?? "An error occurred."} retry={{ label: "Retry", onClick: () => refetch() }} />;
-  }
-  if (!customer) return null;
-  const isArchived = customer.status === "ARCHIVED";
-  const historyItems = historyData?.pages.flatMap((p) => p.history.data) ?? [];
-
   return (
     <div className="space-y-6 max-w-[1100px]">
-      <PageHeader
-        title={
-          <span className="flex items-center gap-2">
-            {customer.name}
-            {isArchived ? <Badge variant="neutral">Archived</Badge> : <Badge>Active</Badge>}
-          </span>
-        }
-        description={`${customer.email ?? ""} ${customer.phone ? `· ${customer.phone}` : ""}`}
-        actions={
-          <div className="flex gap-2">
-            <Button onClick={() => router.push(`/app/invoices/new?customerId=${customerId}`)}>Create invoice</Button>
-            <Link href={`/app/customers/${customerId}/edit`}>
-              <Button variant="outline">Edit</Button>
-            </Link>
-            {isArchived ? (
-              <Button variant="outline" onClick={async () => { try { await restoreMut.mutateAsync(customerId); toast.success("Restored"); } catch (e) { toast.error(String(e)); } }}>
-                Restore
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={async () => { if (!confirm(`Archive ${customer.name}?`)) return; try { await archiveMut.mutateAsync(customerId); toast.success("Archived"); } catch (e) { toast.error(String(e)); } }}>
-                Archive
-              </Button>
-            )}
-          </div>
-        }
-      />
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Outstanding</div>
-            <div className="mt-2 text-xl font-semibold tabular-nums">{balance ? formatMoney(balance.outstanding, balance.currency) : <Skeleton className="h-6 w-24" />}</div>
-            <div className="text-xs text-muted-foreground">{balance ? `${balance.invoice_count} invoices` : "—"}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Overdue</div>
-            <div className="mt-2 text-xl font-semibold tabular-nums text-critical">{balance ? formatMoney(balance.overdue, balance.currency) : <Skeleton className="h-6 w-24" />}</div>
-            <div className="text-xs text-muted-foreground">{balance ? `${balance.overdue_count} overdue` : ""}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Paid historically</div>
-            <div className="mt-2 text-xl font-semibold tabular-nums">{balance ? formatMoney(balance.paid, balance.currency) : <Skeleton className="h-6 w-24" />}</div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="flex gap-2 border-b">
-        <button onClick={() => setTab("overview")} className={`px-3 py-2 text-sm border-b-2 ${tab === "overview" ? "border-brand font-medium" : "border-transparent text-muted-foreground"}`}>
-          Overview
-        </button>
-        <button onClick={() => setTab("contacts")} className={`px-3 py-2 text-sm border-b-2 ${tab === "contacts" ? "border-brand font-medium" : "border-transparent text-muted-foreground"}`}>
-          Contacts
-        </button>
-        <button onClick={() => setTab("history")} className={`px-3 py-2 text-sm border-b-2 ${tab === "history" ? "border-brand font-medium" : "border-transparent text-muted-foreground"}`}>
-          History
-        </button>
-      </div>
-      {tab === "overview" ? (
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              <div className="text-sm font-semibold">Info</div>
-              <div className="text-sm space-y-1">
-                <div>
-                  <span className="text-muted-foreground">Name:</span> {customer.name}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Email:</span> {customer.email ?? "—"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Phone:</span> {customer.phone ?? "—"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Billing:</span> {customer.billing_address ? JSON.stringify(customer.billing_address) : "—"}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm font-semibold">Quick actions</div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => router.push(`/app/invoices/new?customerId=${customerId}`)}>
-                  New invoice for customer
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setTab("history")}>
-                  View history
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-      {tab === "contacts" ? (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-semibold">Contacts</div>
-            {contactsData?.data?.length ? (
-              <div className="mt-3 divide-y">
-                {contactsData.data.map((c) => (
-                  <div key={c.id} className="flex justify-between py-2 text-sm">
-                    <span>
-                      {c.name} {c.is_primary ? <Badge>Primary</Badge> : null}
-                    </span>
-                    <span className="text-muted-foreground">{c.email ?? c.phone ?? "—"}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-3 text-sm text-muted-foreground">No contacts.</div>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-      {tab === "history" ? (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-semibold">History</div>
-            {historyLoading ? (
-              <div className="mt-3 space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : historyItems.length === 0 ? (
-              <div className="mt-4">
-                <EmptyState title="No history yet" description="Create an invoice for this customer to see history." action={{ label: "Create invoice", href: `/app/invoices/new?customerId=${customerId}` }} />
-              </div>
-            ) : (
-              <>
-                <div className="mt-3 divide-y text-sm">
-                  {historyItems.map((h) => (
-                    <div key={h.id} className="flex justify-between py-2">
-                      <span>
-                        {h.type} · {h.id.slice(0, 8)} · {h.amount}
-                      </span>
-                      <span className="text-muted-foreground">{new Date(h.date).toLocaleDateString("en-NG")}</span>
-                    </div>
-                  ))}
-                </div>
-                {hasNextPage ? (
-                  <div className="mt-3">
-                    <Button size="sm" variant="outline" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-                      {isFetchingNextPage ? "Loading…" : "Load more"}
-                    </Button>
-                  </div>
-                ) : null}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
+      <PageHeader title="Customer" />
+      <EmptyState title="No organization" description="Join or create an organization to view this customer." />
     </div>
   );
 }

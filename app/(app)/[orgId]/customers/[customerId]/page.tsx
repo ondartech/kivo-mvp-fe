@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
 import { MoneyAmount } from "@/components/kivo/money-amount";
 import { formatMoney } from "@/lib/money";
-import { useCustomer, useCustomerBalance, useCustomerHistory, useArchiveCustomer, useRestoreCustomer, useContacts } from "@/features/customers/api";
+import { useCustomer, useCustomerBalance, useCustomerHistory, useArchiveCustomer, useRestoreCustomer, useContacts, type ContactOut, type CustomerHistoryOut } from "@/features/customers/api";
 import { toast } from "sonner";
 
 export default function OrgCustomerDetailPage() {
@@ -84,7 +84,7 @@ export default function OrgCustomerDetailPage() {
     }
   };
 
-  const historyItems = historyData?.pages.flatMap((p) => p.history.data) ?? [];
+  const historyItems = historyData?.pages.flatMap((p) => (p as unknown as { data: never[] }).data ?? []) ?? [];
 
   return (
     <div className="space-y-6 max-w-[1100px]">
@@ -200,7 +200,7 @@ export default function OrgCustomerDetailPage() {
             <div className="text-sm font-semibold">Contacts</div>
             {contactsData?.data?.length ? (
               <div className="mt-3 divide-y">
-                {contactsData.data.map((c) => (
+                {contactsData.data.map((c: ContactOut) => (
                   <div key={c.id} className="flex justify-between py-2 text-sm">
                     <span>
                       {c.name} {c.is_primary ? <Badge>Primary</Badge> : null}
@@ -233,12 +233,12 @@ export default function OrgCustomerDetailPage() {
             ) : (
               <>
                 <div className="mt-3 divide-y text-sm">
-                  {historyItems.map((h) => (
-                    <div key={h.id} className="flex justify-between py-2">
+                  {historyItems.map((h: CustomerHistoryOut["data"] extends (infer U)[] ? U : never) => (
+                    <div key={(h as unknown as { id: string }).id} className="flex justify-between py-2">
                       <span>
-                        {h.type} · {h.id.slice(0, 8)} · {h.amount}
+                        {(h as unknown as { type: string }).type} · {(h as unknown as { id: string }).id.slice(0, 8)} · {(h as unknown as { amount?: string }).amount ?? "—"}
                       </span>
-                      <span className="text-muted-foreground">{new Date(h.date).toLocaleDateString("en-NG")}</span>
+                      <span className="text-muted-foreground">{new Date((h as unknown as { date: string }).date).toLocaleDateString("en-NG")}</span>
                     </div>
                   ))}
                 </div>

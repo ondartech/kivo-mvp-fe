@@ -11,7 +11,9 @@ import { startGoogleOAuth } from "@/features/auth/api";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 
-export default function LoginPage() {
+export const dynamic = "force-dynamic";
+
+function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "";
@@ -27,13 +29,12 @@ export default function LoginPage() {
     try {
       const redirectUri = `${window.location.origin}/auth/callback`;
       const { authorization_url, state, code_verifier } = await startGoogleOAuth(redirectUri);
-      // Store verifier and state for exchange
       sessionStorage.setItem("kivo_oauth_state", state);
       sessionStorage.setItem("kivo_oauth_verifier", code_verifier);
       sessionStorage.setItem("kivo_oauth_redirect", redirectUri);
       window.location.href = authorization_url;
-    } catch (e: any) {
-      setError(e?.message || "Failed to start Google sign-in");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to start Google sign-in");
     } finally {
       setGoogleLoading(false);
     }
@@ -53,15 +54,14 @@ export default function LoginPage() {
       if (!res.ok) {
         throw new Error(body?.error?.message || "Sign in failed");
       }
-      // Persist tokens (BFF httpOnly will be set via Set-Cookie if backend does, but also store for lib/api-client localStorage compat)
       if (body.access_token) localStorage.setItem("token", body.access_token);
       if (body.refresh_token) localStorage.setItem("refresh_token", body.refresh_token);
       const orgId = body?.memberships?.[0]?.organization_id;
       if (orgId) router.push(`/${orgId}/dashboard`);
       else if (next) router.push(next);
       else router.push("/onboarding");
-    } catch (e: any) {
-      setError(e?.message || "Sign in failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Sign in failed");
     } finally {
       setLoading(false);
     }
@@ -91,16 +91,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="sola@acme.ng"
-                className="mt-1"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
+              <Input id="email" type="email" placeholder="sola@acme.ng" className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
             </div>
             <div>
               <div className="flex items-center justify-between">
@@ -109,15 +100,7 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input
-                id="password"
-                type="password"
-                className="mt-1"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
+              <Input id="password" type="password" className="mt-1" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
             </div>
             {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
             <Button type="submit" className="w-full" loading={loading}>
@@ -133,5 +116,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen grid place-items-center bg-background px-4"><div className="h-8 w-8 rounded-full border-2 border-zinc-200 border-t-zinc-900 animate-spin" /></div>}>
+      <LoginInner />
+    </React.Suspense>
   );
 }

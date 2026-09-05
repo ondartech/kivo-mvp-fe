@@ -3,58 +3,25 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { env } from "@/lib/env";
 import { fetchWithAuth } from "@/lib/api-client";
+import type { components } from "@/generated/openapi";
 import type { CustomerCreateInput, CustomerPatchInput } from "./schema";
 
-type Customer = {
-  id: string;
-  organization_id: string;
-  name: string;
-  normalized_name: string;
-  email: string | null;
-  phone: string | null;
-  billing_address: Record<string, unknown> | null;
-  tax_identifier: string | null;
-  tax_identifier_type: string | null;
-  business_description: string | null;
-  notes: string | null;
-  status: "ACTIVE" | "ARCHIVED";
-  archived_at: string | null;
-  created_at: string;
-  updated_at: string;
-  balance_summary?: { outstanding: string; overdue: string; currency: string };
-};
+export type CustomerOut = components["schemas"]["CustomerOut"];
+// BE generates CustomerDetailOut without classification/tax fields (openapi allOf flatten issue) — intersect with CustomerOut to restore full shape
+export type CustomerDetailOut = components["schemas"]["CustomerOut"] & { contacts: components["schemas"]["ContactOut"][] };
+export type CustomerListRes = components["schemas"]["CustomerListRes"];
+export type ContactOut = components["schemas"]["ContactOut"];
+export type BillingAddress = components["schemas"]["BillingAddress"];
+export type CustomerBalanceOut = components["schemas"]["app__modules__customer__schemas__CustomerBalanceOut"];
+export type CustomerHistoryOut = components["schemas"]["CustomerHistoryOut"];
+export type ContactListRes = components["schemas"]["ContactListRes"];
 
-type CustomersRes = {
-  data: Customer[];
-  next_cursor: string | null;
-};
-
-type CustomerBalance = {
-  customer_id: string;
-  organization_id: string;
-  currency: string;
-  outstanding: string;
-  overdue: string;
-  invoiced: string;
-  paid: string;
-  invoice_count: number;
-  overdue_count: number;
-  as_of: string;
-};
-
-type HistoryItem = {
-  type: string;
-  id: string;
-  date: string;
-  summary: Record<string, unknown>;
-  amount: string;
-};
-
-type HistoryRes = {
-  customer_id: string;
-  balance: { outstanding: string; overdue: string };
-  history: { data: HistoryItem[]; next_cursor: string | null };
-};
+export type Customer = CustomerOut;
+export type CustomersRes = CustomerListRes;
+export type CustomerBalance = CustomerBalanceOut;
+export type HistoryItem = CustomerHistoryOut extends { data: (infer U)[] } ? U : never;
+export type HistoryRes = CustomerHistoryOut;
+export type Contact = ContactOut;
 
 function baseUrl(orgId: string) {
   return `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/v1/organizations/${orgId}`;
@@ -92,34 +59,34 @@ export function useCustomers(
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers?${params.toString()}`, { method: "GET" });
       return handleRes<CustomersRes>(res);
     },
-    placeholderData: (prev) => prev,
+    placeholderData: (prev: CustomersRes | undefined) => prev,
   });
 }
 
 export function useCustomer(orgId: string, customerId: string) {
-  return useQuery<Customer & { contacts: Contact[] }>({
+  return useQuery<CustomerDetailOut>({
     queryKey: ["customer", orgId, customerId],
     queryFn: async () => {
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers/${customerId}`, { method: "GET" });
-      return handleRes(res);
+      return handleRes<CustomerDetailOut>(res);
     },
     enabled: !!customerId,
   });
 }
 
 export function useCustomerBalance(orgId: string, customerId: string) {
-  return useQuery<CustomerBalance>({
+  return useQuery<CustomerBalanceOut>({
     queryKey: ["customer-balance", orgId, customerId],
     queryFn: async () => {
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers/${customerId}/balance`, { method: "GET" });
-      return handleRes(res);
+      return handleRes<CustomerBalanceOut>(res);
     },
     enabled: !!customerId,
   });
 }
 
 export function useCustomerHistory(orgId: string, customerId: string) {
-  return useInfiniteQuery<HistoryRes>({
+  return useInfiniteQuery<CustomerHistoryOut>({
     queryKey: ["customer-history", orgId, customerId],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
@@ -129,37 +96,24 @@ export function useCustomerHistory(orgId: string, customerId: string) {
       const qs = params.toString();
       const url = `${baseUrl(orgId)}/customers/${customerId}/history${qs ? `?${qs}` : ""}`;
       const res = await fetchWithAuth(url, { method: "GET" });
-      return handleRes<HistoryRes>(res);
+      return handleRes<CustomerHistoryOut>(res);
     },
-    getNextPageParam: (last) => last.history.next_cursor ?? null,
+    getNextPageParam: (last) => (last as unknown as { next_cursor?: string | null }).next_cursor ?? null,
     enabled: !!customerId,
   });
 }
-
-type Contact = {
-  id: string;
-  customer_id: string;
-  organization_id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  type: string;
-  is_primary: boolean;
-  email_opt_in: boolean;
-  whatsapp_opt_in: boolean;
-  created_at: string;
-};
 
 export function useCreateCustomer(orgId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: CustomerCreateInput) => {
+      const idempotencyKey = crypto.randomUUID();
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify(input),
       });
-      return handleRes(res);
+      return handleRes<CustomerDetailOut>(res);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers", orgId] });
@@ -214,11 +168,11 @@ export function useRestoreCustomer(orgId: string) {
 }
 
 export function useContacts(orgId: string, customerId: string) {
-  return useQuery<{ data: Contact[] }>({
+  return useQuery<ContactListRes>({
     queryKey: ["contacts", orgId, customerId],
     queryFn: async () => {
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers/${customerId}/contacts`, { method: "GET" });
-      return handleRes(res);
+      return handleRes<ContactListRes>(res);
     },
     enabled: !!customerId,
   });
@@ -227,13 +181,7 @@ export function useContacts(orgId: string, customerId: string) {
 export function useAddContact(orgId: string, customerId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      name: string;
-      email?: string | null;
-      phone?: string | null;
-      type?: string;
-      is_primary?: boolean;
-    }) => {
+    mutationFn: async (input: { name: string; email?: string | null; phone?: string | null; type?: string; is_primary?: boolean }) => {
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers/${customerId}/contacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
-import { formatMoney } from "@/lib/money";
-import { useCustomers, useArchiveCustomer } from "@/features/customers/api";
+import { useCustomers, useArchiveCustomer, type CustomerOut } from "@/features/customers/api";
 import { toast } from "sonner";
 
 function useDebounced<T>(value: T, delay = 300): T {
@@ -27,7 +26,7 @@ export default function OrgCustomersPage() {
   const params = useParams<{ orgId: string }>();
   const orgId = params.orgId as string;
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<string | undefined>(undefined);
+  const [status, setStatus] = useState<string>("ACTIVE");
   const debouncedQ = useDebounced(q, 300);
   const [cursor, setCursor] = useState<string | null>(null);
   const queryQ = useMemo(() => debouncedQ.trim() || undefined, [debouncedQ]);
@@ -75,20 +74,18 @@ export default function OrgCustomersPage() {
           aria-label="Search customers"
         />
         {isFetching ? <span className="h-1 w-24 bg-brand/20 animate-pulse rounded" aria-hidden /> : null}
-        <div className="flex gap-1">
+        <div className="flex gap-1" role="tablist" aria-label="Customer status">
           <button
-            onClick={() => setStatus(undefined)}
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${!status ? "bg-brand text-white border-brand" : "bg-neutral-50 border-neutral-200"}`}
-          >
-            All
-          </button>
-          <button
+            role="tab"
+            aria-selected={status === "ACTIVE"}
             onClick={() => setStatus("ACTIVE")}
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${status === "ACTIVE" ? "bg-brand text-white border-brand" : "bg-neutral-50 border-neutral-200"}`}
           >
             Active
           </button>
           <button
+            role="tab"
+            aria-selected={status === "ARCHIVED"}
             onClick={() => setStatus("ARCHIVED")}
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${status === "ARCHIVED" ? "bg-brand text-white border-brand" : "bg-neutral-50 border-neutral-200"}`}
           >
@@ -132,7 +129,7 @@ export default function OrgCustomersPage() {
               <span className="col-span-2"></span>
             </div>
             <div className="divide-y">
-              {customers.map((c) => (
+              {customers.map((c: CustomerOut) => (
                 <div key={c.id} className="grid md:grid-cols-12 gap-2 md:gap-4 px-4 py-3 items-center">
                   <div className="md:col-span-4">
                     <Link href={`/app/${orgId}/customers/${c.id}`} className="font-medium hover:underline">
@@ -143,9 +140,7 @@ export default function OrgCustomersPage() {
                   <div className="hidden md:block md:col-span-3 text-sm text-muted-foreground truncate">
                     {c.email ?? c.phone ?? "—"}
                   </div>
-                  <div className="md:col-span-2 text-right tabular-nums font-medium">
-                    {c.balance_summary ? formatMoney(c.balance_summary.outstanding, c.balance_summary.currency) : "—"}
-                  </div>
+                  <div className="md:col-span-2 text-right tabular-nums font-medium text-muted-foreground">—</div>
                   <div className="md:col-span-1 text-center text-sm">—</div>
                   <div className="md:col-span-2 flex gap-1 justify-end">
                     <Link href={`/app/${orgId}/customers/${c.id}`}>

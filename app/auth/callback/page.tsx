@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { exchangeGoogleCode } from "@/features/auth/api";
 
-export default function GoogleCallbackPage() {
+export const dynamic = "force-dynamic";
+
+function GoogleCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = React.useState<"loading" | "error">("loading");
@@ -29,9 +31,7 @@ export default function GoogleCallbackPage() {
       const storedState = sessionStorage.getItem("kivo_oauth_state");
       const verifier = sessionStorage.getItem("kivo_oauth_verifier");
       const redirectUri = sessionStorage.getItem("kivo_oauth_redirect") || `${window.location.origin}/auth/callback`;
-      // Basic state check (server also verifies HMAC)
       if (storedState && storedState !== state) {
-        // Still allow server to verify, but warn
         console.warn("State mismatch client-side");
       }
       try {
@@ -41,18 +41,16 @@ export default function GoogleCallbackPage() {
           code_verifier: verifier || undefined,
           redirect_uri: redirectUri,
         });
-        // Persist tokens (localStorage for lib/api-client compat, httpOnly will be set via Set-Cookie if backend does)
         if (data.access_token) localStorage.setItem("token", data.access_token);
         if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
-        // Cleanup
         sessionStorage.removeItem("kivo_oauth_state");
         sessionStorage.removeItem("kivo_oauth_verifier");
         sessionStorage.removeItem("kivo_oauth_redirect");
-        const orgId = (data as any)?.memberships?.[0]?.organization_id;
+        const orgId = (data as unknown as { memberships?: { organization_id: string }[] })?.memberships?.[0]?.organization_id;
         if (orgId) router.replace(`/${orgId}/dashboard`);
         else router.replace("/onboarding");
-      } catch (e: any) {
-        setError(e?.message || "Google sign-in failed");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Google sign-in failed");
         setStatus("error");
       }
     };
@@ -79,5 +77,13 @@ export default function GoogleCallbackPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen grid place-items-center bg-background px-4"><div className="h-8 w-8 rounded-full border-2 border-zinc-200 border-t-zinc-900 animate-spin" /></div>}>
+      <GoogleCallbackInner />
+    </React.Suspense>
   );
 }
