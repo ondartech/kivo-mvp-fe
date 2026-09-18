@@ -26,14 +26,6 @@ function entityHref(item: RetrievalEvidence): string | null {
       return `/app/customers/${item.entity_id}`;
     case "INVOICE":
       return `/app/invoices/${item.entity_id}`;
-    case "QUOTE":
-      return `/app/quotes/${item.entity_id}`;
-    case "CONTRACT":
-      return `/app/contracts/${item.entity_id}`;
-    case "PROJECT":
-      return `/app/projects/${item.entity_id}`;
-    case "PAYMENT":
-      return `/app/payments/${item.entity_id}`;
     default:
       return null;
   }
