@@ -140,6 +140,10 @@ export function useAskOndar(orgId: string) {
   });
 }
 
+function isOrganizationId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export function useOpenAttentionCount(orgId: string) {
   return useQuery({
     queryKey: ["attention", orgId, "shell-count"],
@@ -157,6 +161,7 @@ export function useOpenAttentionCount(orgId: string) {
     },
     staleTime: 30_000,
     retry: 1,
+    enabled: isOrganizationId(orgId),
   });
 }
 
@@ -171,5 +176,6 @@ export function useAttention(orgId: string, status?: string) {
       });
       return handleRes<AttentionItem[]>(res);
     },
+    enabled: isOrganizationId(orgId),
   });
 }
