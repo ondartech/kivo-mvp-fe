@@ -82,6 +82,16 @@ function baseUrl(orgId: string) {
   return `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/v1/organizations/${orgId}`;
 }
 
+export function isOrganizationId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function requireOrganizationId(orgId: string): void {
+  if (!isOrganizationId(orgId)) {
+    throw new Error("Organization context is not available. Select a workspace and try again.");
+  }
+}
+
 async function handleRes<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -102,6 +112,7 @@ export function useGlobalSearch(orgId: string) {
       entityTypes?: FoundationEntityType[];
       limit?: number;
     }) => {
+      requireOrganizationId(orgId);
       const res = await fetchWithAuth(`${baseUrl(orgId)}/retrieval`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,6 +136,7 @@ export function useAskOndar(orgId: string) {
       entityTypes?: FoundationEntityType[];
       limit?: number;
     }) => {
+      requireOrganizationId(orgId);
       const res = await fetchWithAuth(`${baseUrl(orgId)}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -138,10 +150,6 @@ export function useAskOndar(orgId: string) {
       return handleRes<AskResponse>(res);
     },
   });
-}
-
-function isOrganizationId(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export function useOpenAttentionCount(orgId: string) {
