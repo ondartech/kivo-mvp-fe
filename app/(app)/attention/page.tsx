@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/kivo/page-header";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAttention } from "@/features/foundation/api";
+import { isOrganizationId, useAttention } from "@/features/foundation/api";
 
 function useOrgId(): string {
   if (typeof window !== "undefined") {
@@ -20,6 +20,7 @@ const activeStatuses = new Set(["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"]);
 export default function AttentionPage() {
   const orgId = useOrgId();
   const attention = useAttention(orgId);
+  const hasOrganization = isOrganizationId(orgId);
   const items = (attention.data ?? []).filter((item) => activeStatuses.has(item.status));
 
   return (
@@ -30,7 +31,13 @@ export default function AttentionPage() {
         description="Operational items that require review. The source domain remains authoritative for the underlying business state."
       />
 
-      {attention.isLoading ? (
+      {!hasOrganization ? (
+        <Card>
+          <CardContent className="p-5 text-sm text-muted-foreground">
+            Organization context is not available. Select a workspace to load Attention.
+          </CardContent>
+        </Card>
+      ) : attention.isLoading ? (
         <Card>
           <CardContent className="p-5 text-sm text-muted-foreground">Loading attention items…</CardContent>
         </Card>
