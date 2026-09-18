@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useOpenAttentionCount } from "@/features/foundation/api";
 
 // Kivo wordmark — K with flow (avoid ₦/wallet/coin)
 function KivoMark({ className }: { className?: string }) {
@@ -22,11 +24,23 @@ const nav = [
   { label: "Customers", href: "/app/customers" },
   { label: "Receivables", href: "/app/receivables" },
   { label: "Payments", href: "/app/payments" },
+  { label: "Search", href: "/app/search" },
+  { label: "Ask", href: "/app/ask" },
   { label: "Settings", href: "/app/settings/business" },
 ];
 
 export function AppShell({ children, orgId = "org_demo" }: { children: React.ReactNode; orgId?: string }) {
   const pathname = usePathname();
+  const [activeOrgId, setActiveOrgId] = useState(orgId);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("orgId") ?? localStorage.getItem("organization_id");
+    if (stored) setActiveOrgId(stored);
+  }, [orgId]);
+
+  const attention = useOpenAttentionCount(activeOrgId);
+  const attentionCount = attention.data?.count ?? 0;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 h-[64px] border-b bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
@@ -54,6 +68,28 @@ export function AppShell({ children, orgId = "org_demo" }: { children: React.Rea
             </nav>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="/app/attention"
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border bg-surface px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-50",
+                pathname?.startsWith("/app/attention") && "bg-neutral-100"
+              )}
+              aria-label={`Attention${attentionCount ? `: ${attentionCount} open items` : ""}`}
+            >
+              <span>Attention</span>
+              {attentionCount ? (
+                <span
+                  className={cn(
+                    "grid min-w-5 place-items-center rounded-full px-1.5 py-0.5 text-[10px]",
+                    (attention.data?.critical ?? 0) > 0
+                      ? "bg-neutral-900 text-white"
+                      : "bg-neutral-100 text-foreground"
+                  )}
+                >
+                  {attentionCount > 99 ? "99+" : attentionCount}
+                </span>
+              ) : null}
+            </Link>
             <div className="hidden sm:flex items-center gap-2 rounded-full border bg-surface px-3 py-1.5 text-xs">
               <span className="h-2 w-2 rounded-full bg-success" />
               demo — Lagos business
