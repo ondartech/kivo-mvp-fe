@@ -12,7 +12,7 @@ The production frontend runs as a Next.js standalone Node server:
 - readiness: `GET /ready`
 - canonical backend API: `https://api.getondar.com`
 - canonical app host: `https://app.getondar.com`
-- organization vanity host: `https://{handle}.getondar.com` (FE-010)
+- organization vanity host: `https://{handle}.getondar.com`
 - public invoice path: `/i/{token}`
 
 `NEXT_PUBLIC_API_URL` is a **build-time public value**. It is compiled into the client
@@ -49,12 +49,43 @@ docker run --rm -p 3000:3000 ondar-web:local
 The image runs as the non-root `nextjs` user. Runtime configuration must not attempt to
 change `NEXT_PUBLIC_API_URL`; rebuild the image when that public build-time value changes.
 
-## Tenancy and hostname invariant
+## Organization vanity routing
 
-A browser hostname is presentation context, not tenant authorization. FE-010 may derive
-an organization handle from `{handle}.getondar.com`, but authenticated data access still
-uses backend JWT/membership enforcement and public document access still uses opaque
-tokens. The frontend must never treat a hostname as proof of organization membership.
+FE-010 classifies browser hosts into apex, system, tenant, local, external, or unknown
+Ondar hosts. A tenant hostname may expose its single-label handle to server-side
+presentation code through internal request headers, but the handle is never an
+authorization credential.
+
+Stable browser URLs use an explicit `/app` namespace:
+
+```text
+https://app.getondar.com/app/dashboard
+https://acme.getondar.com/app/dashboard
+https://acme.getondar.com/app/customers
+```
+
+The middleware rewrites those paths internally onto the repository's existing App Router
+surfaces such as `/dashboard` and `/customers`. The browser URL remains `/app/...`.
+
+On tenant hosts, public capability paths are never rewritten:
+
+```text
+/i/{token}
+/q/{token}
+/accept/{token}
+/pay/{token}
+```
+
+Only `/i/{token}` exists in the current frontend implementation; the other public
+surfaces may be added by their owning product cards without changing hostname routing.
+
+A browser hostname is presentation context, not tenant authorization. Authenticated data
+access still uses backend JWT/membership enforcement and public document access still uses
+opaque tokens. The frontend must never treat a hostname as proof of organization
+membership.
+
+Unknown deeper Ondar hosts such as `foo.bar.getondar.com` return 404 rather than being
+guessed into a tenant context.
 
 ## Validation
 
