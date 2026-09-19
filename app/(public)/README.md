@@ -54,3 +54,11 @@ authorization from the hostname.
 - Do not calculate authoritative money values in the browser.
 - Render backend-provided Decimal strings.
 - Public API errors should not reveal whether another organization owns a token.
+
+
+## Implemented surfaces
+
+- `/i/{token}` — authoritative public invoice view + PDF link.
+- `/q/{token}` — authoritative frozen quote view + PDF link.
+
+Acceptance and payment handoff are delivered in the subsequent FE-010C/FE-010D cards.
