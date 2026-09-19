@@ -16,3 +16,18 @@ export async function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) 
 }
 
 export const ApiClient = { fetch: fetchWithAuth };
+
+
+/**
+ * Public capability fetch boundary.
+ *
+ * Never attaches Authorization or Idempotency-Key. Public invoice/quote/acceptance
+ * authority is the opaque token carried in the URL, not an authenticated browser session.
+ */
+export async function fetchPublic(input: RequestInfo, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  const requestId = crypto.randomUUID();
+  headers.set("X-Request-Id", requestId);
+  headers.set("X-Correlation-Id", requestId);
+  return fetch(input, { ...init, headers });
+}
