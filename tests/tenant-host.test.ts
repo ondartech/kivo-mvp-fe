@@ -62,6 +62,10 @@ describe("tenant host routing", () => {
   it("rewrites tenant /app paths onto existing Next routes", () => {
     const context = classifyTenantHost("acme.getondar.com");
 
+    expect(routeForHost(context, "/app")).toEqual({
+      type: "REDIRECT",
+      pathname: "/app/dashboard",
+    });
     expect(routeForHost(context, "/app/dashboard")).toEqual({
       type: "REWRITE",
       pathname: "/dashboard",
