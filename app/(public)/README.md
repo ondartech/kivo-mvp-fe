@@ -31,8 +31,14 @@ to select an organization.
 payment endpoint and relays the provider redirect. The frontend never calculates payment
 amounts or treats Host as payment authority.
 
-## Missing public UI surfaces
+## Public UI surfaces
 
-Invoice `/i/{token}` exists today. Quote `/q/{token}` and milestone acceptance
-`/accept/{token}` require their own product-surface implementation cards; vanity-host
-routing must not fabricate their business state.
+The public route group now exposes:
+
+- `/i/{token}` — invoice
+- `/q/{token}` — frozen public quote
+- `/accept/{token}` — milestone acceptance view and decision
+- `/pay/{token}` — hosted payment redirect
+
+Quote and acceptance pages consume only the PII-minimal backend public contracts. They do
+not calculate financial totals, resolve organizations from Host, or expose internal IDs.
