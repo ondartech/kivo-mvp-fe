@@ -1,3 +1,4 @@
 export const env = {
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "https://api.kivo.ng",
+  NEXT_PUBLIC_API_URL:
+    process.env.NEXT_PUBLIC_API_URL ?? "https://api.getondar.com",
 };
