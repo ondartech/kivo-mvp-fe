@@ -147,12 +147,16 @@ export function routeForHost(
     return { type: "REDIRECT", pathname: "/app/dashboard" };
   }
 
+  if (appPathEnabled && pathname === "/app") {
+    return { type: "REDIRECT", pathname: "/app/dashboard" };
+  }
+
   if (isTenant && PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return { type: "NEXT" };
   }
 
-  if (appPathEnabled && (pathname === "/app" || pathname.startsWith("/app/"))) {
-    const stripped = pathname.slice("/app".length) || "/";
+  if (appPathEnabled && pathname.startsWith("/app/")) {
+    const stripped = pathname.slice("/app".length);
     return { type: "REWRITE", pathname: stripped };
   }
 
