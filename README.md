@@ -60,3 +60,25 @@ NEXT_PUBLIC_ROOT_DOMAIN=getondar.com
 ```
 
 Local development continues to work on localhost without tenant classification.
+
+
+## Public payment bridge
+
+FE-011 implements the emitted browser path:
+
+```text
+https://{handle}.getondar.com/pay/{opaque-token}
+```
+
+as a thin HTTP redirect to:
+
+```text
+https://api.getondar.com/api/v1/pay/{opaque-token}
+```
+
+The frontend does not resolve, inspect, or authorize the payment token. The backend hosted
+payment endpoint remains authoritative for PaymentIntent lookup, expiry/payability checks,
+amount state, and provider checkout redirection.
+
+This bridge exists because wildcard organization hosts terminate at the web runtime, while
+the hosted payment capability is owned by the backend Public/Payments boundary.
