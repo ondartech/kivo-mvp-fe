@@ -60,5 +60,6 @@ authorization from the hostname.
 
 - `/i/{token}` — authoritative public invoice view + PDF link.
 - `/q/{token}` — authoritative frozen quote view + PDF link.
+- `/accept/{token}` — milestone review plus accept/reject decision workflow.
 
-Acceptance and payment handoff are delivered in the subsequent FE-010C/FE-010D cards.
+Payment handoff is delivered in FE-010D.
