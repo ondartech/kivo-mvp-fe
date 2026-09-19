@@ -76,11 +76,20 @@ export function PublicQuoteView({ token }: { token: string }) {
                 <div className="col-span-7">
                   <div className="font-medium">{line.description}</div>
                   <div className="text-xs text-muted-foreground">
-                    Qty {line.quantity} · <MoneyAmount amount={line.unit_price} currency={quote.currency} emphasis="secondary" />
+                    Qty {line.quantity} ·{" "}
+                    <MoneyAmount
+                      amount={line.unit_price}
+                      currency={quote.currency}
+                      emphasis="secondary"
+                    />
                   </div>
                 </div>
                 <div className="col-span-5 text-right">
-                  <MoneyAmount amount={line.line_total} currency={quote.currency} emphasis="table" />
+                  <MoneyAmount
+                    amount={line.line_total}
+                    currency={quote.currency}
+                    emphasis="table"
+                  />
                 </div>
               </div>
             ))}
@@ -89,7 +98,11 @@ export function PublicQuoteView({ token }: { token: string }) {
           <div className="ml-auto mt-6 max-w-sm space-y-2 text-sm">
             <SummaryRow label="Subtotal" amount={quote.subtotal} currency={quote.currency} />
             {quote.discount_total !== "0.00" ? (
-              <SummaryRow label="Discount" amount={quote.discount_total} currency={quote.currency} />
+              <SummaryRow
+                label="Discount"
+                amount={quote.discount_total}
+                currency={quote.currency}
+              />
             ) : null}
             {quote.tax_total !== "0.00" ? (
               <SummaryRow label="Tax" amount={quote.tax_total} currency={quote.currency} />
@@ -105,14 +118,18 @@ export function PublicQuoteView({ token }: { token: string }) {
 
           {quote.notes ? (
             <section className="mt-6">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</h2>
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Notes
+              </h2>
               <p className="mt-2 whitespace-pre-wrap text-sm">{quote.notes}</p>
             </section>
           ) : null}
 
           {quote.terms ? (
             <section className="mt-6">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</h2>
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Terms
+              </h2>
               <p className="mt-2 whitespace-pre-wrap text-sm">{quote.terms}</p>
             </section>
           ) : null}
