@@ -144,7 +144,12 @@ export default async function PublicInvoicePage({
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-[720px] px-4 py-8">
         <header className="text-center">
-          <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-md bg-brand font-semibold text-brand-foreground">
+          <div
+            className={
+              "mx-auto flex h-8 w-8 items-center justify-center rounded-md " +
+              "bg-brand font-semibold text-brand-foreground"
+            }
+          >
             O
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
@@ -154,7 +159,12 @@ export default async function PublicInvoicePage({
 
         <Card className="mt-6">
           <CardContent className="p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <div
+              className={
+                "flex flex-wrap items-center justify-between gap-2 " +
+                "text-xs text-muted-foreground"
+              }
+            >
               <span>
                 {invoice.invoice_number} · Issued {formatDate(invoice.issue_date)}
               </span>
@@ -182,7 +192,12 @@ export default async function PublicInvoicePage({
             </div>
 
             <div className="mt-6">
-              <div className="grid grid-cols-12 gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <div
+                className={
+                  "grid grid-cols-12 gap-2 text-xs uppercase tracking-wide " +
+                  "text-muted-foreground"
+                }
+              >
                 <span className="col-span-6">Description</span>
                 <span className="col-span-2 text-right">Qty</span>
                 <span className="col-span-4 text-right">Amount</span>
