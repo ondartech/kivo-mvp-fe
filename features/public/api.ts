@@ -6,6 +6,8 @@ import {
   type PublicQuote,
 } from "@/features/public/schema";
 
+export type { PublicAcceptance, PublicQuote } from "@/features/public/schema";
+
 type ErrorEnvelope = {
   error?: {
     code?: string;
