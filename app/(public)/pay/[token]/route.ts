@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 import { env } from "@/lib/env";
 
-export function buildHostedPaymentApiUrl(token: string): string {
-  const base = env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
+export function buildHostedPaymentApiUrl(
+  token: string,
+  apiBaseUrl = env.NEXT_PUBLIC_API_URL,
+): string {
+  const base = apiBaseUrl.replace(/\/$/, "");
   return `${base}/api/v1/pay/${encodeURIComponent(token)}`;
 }
 
