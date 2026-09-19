@@ -61,5 +61,8 @@ authorization from the hostname.
 - `/i/{token}` — authoritative public invoice view + PDF link.
 - `/q/{token}` — authoritative frozen quote view + PDF link.
 - `/accept/{token}` — milestone review plus accept/reject decision workflow.
+- `/pay/{token}` — browser handoff to the authoritative backend payment endpoint.
 
-Payment handoff is delivered in FE-010D.
+The payment page never interprets provider return state as financial truth. It only moves
+the browser to the backend-owned payment capability; provider verification/webhooks remain
+authoritative.
