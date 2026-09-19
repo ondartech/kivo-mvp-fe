@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoneyAmount } from "@/components/kivo/money-amount";
+import { fetchPublic } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { publicApiUrl } from "@/lib/public-api";
 
@@ -90,7 +91,7 @@ async function fetchInvoice(
     `/api/v1/public/invoices/${encodeURIComponent(token)}/pdf`,
   );
 
-  const response = await fetch(invoiceUrl, {
+  const response = await fetchPublic(invoiceUrl, {
     method: "GET",
     cache: "no-store",
     headers: { Accept: "application/json" },
