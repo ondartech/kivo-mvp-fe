@@ -220,7 +220,10 @@ export function AcceptanceCard({
 
             {error ? (
               <div
-                className="mt-3 rounded-md border border-critical/20 bg-critical-subtle p-3 text-sm text-critical"
+                className={
+                  "mt-3 rounded-md border border-critical/20 bg-critical-subtle " +
+                  "p-3 text-sm text-critical"
+                }
                 role="alert"
               >
                 {error}
