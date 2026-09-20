@@ -13,7 +13,7 @@ export type HostRouteAction =
   | { type: "NOT_FOUND" };
 
 const DEFAULT_ROOT_DOMAIN = "getondar.com";
-const SYSTEM_SUBDOMAINS = new Set(["api", "app", "pay", "www"]);
+const SYSTEM_SUBDOMAINS = new Set(["api", "app", "pay", "www", "reply"]);
 const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const TENANT_LABEL = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/;
 const PUBLIC_PREFIXES = ["/i/", "/q/", "/accept/", "/pay/"];
