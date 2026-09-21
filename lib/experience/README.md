@@ -86,3 +86,38 @@ renderer registry.
 The existing AIR-006 `AiAnswerBlock` now composes `AnswerBlock` and
 `EvidenceBlock`, so the primitive family is exercised by the production Ask
 surface before ArtifactEnvelope registry integration lands.
+
+## EXP-FE-001 — Artifact renderer registry, L1 read subset
+
+`ArtifactRenderer` is the sole frontend dispatcher from an EXP-BE-005
+`ArtifactEnvelope` to the FE-014 read primitive family.
+
+The mapping is a static application-owned registry keyed by artifact type and
+schema version. Incoming artifact data cannot select a component name, import
+path, module, script or executable renderer.
+
+The L1 registry covers all eleven EXP-BE-005 v1 read types and enforces:
+
+- known artifact type;
+- exact supported schema version;
+- optional per-family feature flag;
+- complete ArtifactEnvelope validation;
+- registered render-mode compatibility;
+- strict type-specific data validation;
+- artifact interaction allow-listing before entity/evidence link resolvers are
+  exposed to a primitive;
+- safe fallback UI for all failures.
+
+Renderer failures emit the `artifact_render_failure` telemetry contract with
+artifact/conversation/turn/type/version dimensions and a typed failure reason.
+The registry accepts an injected telemetry sink. Universal Ask currently connects
+that sink to the lightweight `ondar:experience-telemetry` browser event bridge;
+this is an integration point for the frontend observability transport, not a
+parallel analytics stack.
+
+Universal Ask passes the raw object carried by `artifact.created` into the
+registry so unknown/future artifact types fail visibly and generate telemetry
+instead of being silently discarded.
+
+The full L2 registry will extend this same mechanism after EXP-BE-006 adds
+proposal/action/workspace artifact families.

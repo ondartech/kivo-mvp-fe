@@ -90,15 +90,7 @@ export type ExperienceScope = {
   branchId: string | null;
 };
 
-export type StreamArtifact = {
-  artifact_id: string;
-  artifact_type: string;
-  title: string;
-  authority_class?: string;
-  persistence_mode?: string;
-  render_mode?: string;
-  data?: Record<string, unknown>;
-};
+export type StreamArtifact = Record<string, unknown>;
 
 export type WorkspaceSuggestion = {
   title: string;
@@ -322,34 +314,10 @@ export function artifactFromEventPayload(
   payload: Record<string, unknown>,
 ): StreamArtifact | null {
   const value = payload.artifact;
-  if (!value || typeof value !== "object") return null;
-  const artifact = value as Record<string, unknown>;
-  if (
-    typeof artifact.artifact_id !== "string" ||
-    typeof artifact.artifact_type !== "string" ||
-    typeof artifact.title !== "string"
-  ) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
-  return {
-    artifact_id: artifact.artifact_id,
-    artifact_type: artifact.artifact_type,
-    title: artifact.title,
-    authority_class:
-      typeof artifact.authority_class === "string"
-        ? artifact.authority_class
-        : undefined,
-    persistence_mode:
-      typeof artifact.persistence_mode === "string"
-        ? artifact.persistence_mode
-        : undefined,
-    render_mode:
-      typeof artifact.render_mode === "string" ? artifact.render_mode : undefined,
-    data:
-      artifact.data && typeof artifact.data === "object"
-        ? (artifact.data as Record<string, unknown>)
-        : undefined,
-  };
+  return value as Record<string, unknown>;
 }
 
 export function workspaceFromEventPayload(

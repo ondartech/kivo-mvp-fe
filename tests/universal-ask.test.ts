@@ -71,35 +71,21 @@ describe("Universal Ask runtime", () => {
     ).toBeNull();
   });
 
-  it("extracts the registered artifact envelope without trusting arbitrary payloads", () => {
-    expect(
-      artifactFromEventPayload({
-        artifact: {
-          artifact_id: "66666666-6666-4666-8666-666666666666",
-          artifact_type: "ANSWER",
-          title: "Receivables answer",
-          authority_class: "DERIVED",
-          persistence_mode: "PERSISTED",
-          render_mode: "INLINE",
-          data: { status: "GROUNDED" },
-        },
-      }),
-    ).toEqual({
+  it("passes raw artifact objects to the trusted renderer registry", () => {
+    const artifact = {
       artifact_id: "66666666-6666-4666-8666-666666666666",
       artifact_type: "ANSWER",
-      title: "Receivables answer",
-      authority_class: "DERIVED",
-      persistence_mode: "PERSISTED",
-      render_mode: "INLINE",
-      data: { status: "GROUNDED" },
-    });
+      schema_version: 99,
+      title: "Future artifact",
+    };
+
+    expect(
+      artifactFromEventPayload({ artifact }),
+    ).toEqual(artifact);
 
     expect(
       artifactFromEventPayload({
-        artifact: {
-          artifact_type: "ANSWER",
-          title: "Missing identity",
-        },
+        artifact: "<script>alert(1)</script>",
       }),
     ).toBeNull();
   });
