@@ -50,3 +50,39 @@ Voice is present only as a disabled affordance until EXP-BE-009 / EXP-FE-004 lan
 
 L1 remains read-only: mutation-shaped intents stop at BLOCKED_L1 and never call a
 business mutation endpoint.
+
+## FE-014 — Generated UI Read Primitive Family
+
+The frontend now has presentation-only primitives for every EXP-BE-005 L1
+read artifact data shape:
+
+- `AnswerBlock`
+- `EvidenceBlock`
+- `MetricBlock`
+- `MetricGroup`
+- `EntityCard`
+- `EntityList`
+- `DataTable`
+- `Timeline`
+- `WarningBlock`
+- `ConflictBlock`
+- `ErrorBlock`
+
+The corresponding strict Zod contracts live in
+`lib/experience/read-artifact-contracts.ts` and mirror backend schema version 1.
+
+These primitives:
+
+- render text/data only; they never execute arbitrary HTML or script;
+- expose optional authority and freshness metadata;
+- open evidence/entity records only through an explicit href resolver supplied
+  by trusted application code;
+- share one loading/partial/empty/error grammar;
+- do not decide which ArtifactEnvelope type/version maps to which renderer.
+
+That last responsibility intentionally remains with EXP-FE-001, the Artifact
+renderer registry.
+
+The existing AIR-006 `AiAnswerBlock` now composes `AnswerBlock` and
+`EvidenceBlock`, so the primitive family is exercised by the production Ask
+surface before ArtifactEnvelope registry integration lands.
