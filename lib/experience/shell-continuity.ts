@@ -46,7 +46,7 @@ export function workspaceTitleFromHref(href: string): string {
 
   if (segments.length === 1) return primary;
 
-  const identity = segments.at(-1) ?? "";
+  const identity = segments[segments.length - 1] ?? "";
   return `${primary} · ${identity.length > 12 ? `${identity.slice(0, 8)}…` : identity}`;
 }
 
@@ -57,21 +57,25 @@ function parseStored(value: string | null): ShellWorkspaceRef[] {
     if (!Array.isArray(parsed)) return [];
 
     return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return [];
+      }
+
+      const record = item as Record<string, unknown>;
       if (
-        !item ||
-        typeof item !== "object" ||
-        typeof item.href !== "string" ||
-        typeof item.title !== "string" ||
-        typeof item.visitedAt !== "string" ||
-        !isWorkspaceLikeHref(item.href)
+        typeof record.href !== "string" ||
+        typeof record.title !== "string" ||
+        typeof record.visitedAt !== "string" ||
+        !isWorkspaceLikeHref(record.href)
       ) {
         return [];
       }
+
       return [
         {
-          href: item.href,
-          title: item.title,
-          visitedAt: item.visitedAt,
+          href: record.href,
+          title: record.title,
+          visitedAt: record.visitedAt,
         },
       ];
     });
