@@ -33,7 +33,20 @@ export const artifactFreshnessSchema = z
     stale_after: z.string().datetime({ offset: true }).nullable().optional(),
     reason: z.string().max(300).nullable().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.as_of &&
+      value.stale_after &&
+      new Date(value.stale_after).getTime() < new Date(value.as_of).getTime()
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["stale_after"],
+        message: "stale_after cannot precede as_of",
+      });
+    }
+  });
 
 export type ArtifactFreshness = z.infer<typeof artifactFreshnessSchema>;
 
@@ -235,7 +248,6 @@ export const readArtifactDataSchemas = {
 } as const;
 
 export type ReadArtifactType = keyof typeof readArtifactDataSchemas;
-
 
 export const READ_ARTIFACT_SCHEMA_VERSION = 1 as const;
 
