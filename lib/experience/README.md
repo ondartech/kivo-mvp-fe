@@ -24,3 +24,29 @@ Event semantics remain explicit:
 
 UI code must never interpret `PROGRESS` as proof that a business-domain mutation
 committed.
+
+## FE-012 — Universal Ask / Primary Input Surface
+
+Universal Ask composes the shipped L1 backend primitives rather than treating Ask
+as a stateless chat request:
+
+1. resolve the current organization and branch context;
+2. resume the saved active Conversation only when its branch context matches;
+3. append a durable USER turn;
+4. resolve the typed Intent and conversational entity references;
+5. replay the turn's EXP-BE-004 SSE lifecycle events;
+6. stop on clarification or BLOCKED_L1 mutation intent;
+7. for resolved read intents, call AIR-006 for the grounded answer, carrying the
+   first resolved entity as the authorized graph anchor when one exists.
+
+AIR-006 does not yet emit answer.delta or trusted Experience artifacts itself.
+The frontend therefore does not fabricate those events or wrap the AIR-006 result
+as an ArtifactEnvelope. It renders the grounded AIR-006 answer with the existing
+evidence component while independently consuming any real artifact.created or
+workspace.suggested events emitted by the Experience Runtime.
+
+The production shell exposes Ask persistently. Search remains an explicit fallback.
+Voice is present only as a disabled affordance until EXP-BE-009 / EXP-FE-004 lands.
+
+L1 remains read-only: mutation-shaped intents stop at BLOCKED_L1 and never call a
+business mutation endpoint.
