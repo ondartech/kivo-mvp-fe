@@ -124,9 +124,9 @@ export default function AskOndarPage() {
   const [intent, setIntent] = useState<IntentResolution | null>(null);
   const [events, setEvents] = useState<InteractionEvent[]>([]);
   const [answer, setAnswer] = useState<AskResponse | null>(null);
-  const [artifacts, setArtifacts] = useState<StreamArtifact[]>([]);
-  const [selectedArtifact, setSelectedArtifact] =
-    useState<StreamArtifact | null>(null);
+  const [artifacts, setArtifacts] = useState<
+    Array<{ key: string; artifact: StreamArtifact }>
+  >([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceSuggestion[]>([]);
   const [runState, setRunState] = useState<RunState>("IDLE");
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +164,6 @@ export default function AskOndarPage() {
     setEvents([]);
     setArtifacts([]);
     setWorkspaces([]);
-    setSelectedArtifact(null);
     setLastQuestion(text);
 
     try {
@@ -206,10 +205,16 @@ export default function AskOndarPage() {
             if (artifact) {
               setArtifacts((current) =>
                 current.some(
-                  (item) => item.artifact_id === artifact.artifact_id,
+                  (item) => item.key === streamEvent.interaction_event_id,
                 )
                   ? current
-                  : [...current, artifact],
+                  : [
+                      ...current,
+                      {
+                        key: streamEvent.interaction_event_id,
+                        artifact,
+                      },
+                    ],
               );
             }
           }
@@ -473,58 +478,20 @@ export default function AskOndarPage() {
       ) : null}
 
       {artifacts.length ? (
-        <section aria-labelledby="ask-artifacts-heading">
-          <h2 id="ask-artifacts-heading" className="mb-2 text-sm font-semibold">
-            Artifacts
+        <section aria-labelledby="ask-artifacts-heading" className="space-y-3">
+          <h2 id="ask-artifacts-heading" className="text-sm font-semibold">
+            Generated views
           </h2>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {artifacts.map((artifact) => (
-              <button
-                key={artifact.artifact_id}
-                type="button"
-                className="rounded-md border p-3 text-left transition-colors hover:bg-neutral-50"
-                onClick={() => setSelectedArtifact(artifact)}
-              >
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {artifact.artifact_type}
-                </div>
-                <div className="mt-1 font-medium">{artifact.title}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {artifact.authority_class ?? "Unknown authority"} ·{" "}
-                  {artifact.persistence_mode ?? "Unknown persistence"}
-                </div>
-              </button>
-            ))}
-          </div>
+          {artifacts.map((item) => (
+            <ArtifactRenderer
+              key={item.key}
+              artifact={item.artifact}
+              resolvers={{ resolveEntityHref: entityWorkspaceHref }}
+              onTelemetry={emitExperienceTelemetry}
+            />
+          ))}
         </section>
       ) : null}
-
-      {selectedArtifact ? (
-        <section
-          aria-labelledby="selected-artifact-heading"
-          className="space-y-2"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="selected-artifact-heading" className="text-sm font-semibold">
-              Generated view
-            </h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedArtifact(null)}
-            >
-              Close
-            </Button>
-          </div>
-          <ArtifactRenderer
-            artifact={selectedArtifact}
-            resolvers={{ resolveEntityHref: entityWorkspaceHref }}
-            onTelemetry={emitExperienceTelemetry}
-          />
-        </section>
-      ) : null}
-
       {answer ? <AiAnswerBlock result={answer} /> : null}
 
       {!answer &&
