@@ -12,5 +12,6 @@ export {
   Timeline,
   WarningBlock,
   type EntityHrefResolver,
+  type EvidenceHrefResolver,
   type ReadPrimitiveMeta,
 } from "./read-primitives";
