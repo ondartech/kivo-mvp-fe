@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ArtifactRenderer,
   registeredReadArtifactRenderers,
+  type ArtifactRendererFlags,
   type ArtifactRendererTelemetryEvent,
 } from "@/components/kivo/generated-ui/artifact-renderer";
 
@@ -65,7 +66,7 @@ function entityArtifact(allowedInteractions: string[]) {
 function renderArtifact(
   artifact: unknown,
   options?: {
-    flags?: Record<string, boolean>;
+    flags?: ArtifactRendererFlags;
     telemetry?: (event: ArtifactRendererTelemetryEvent) => void;
     resolveEntityHref?: () => string | null;
   },
