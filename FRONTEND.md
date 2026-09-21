@@ -385,6 +385,8 @@ The route map should reflect the information architecture (`DESIGN.md v2.1 §17/
 /quotes/[quoteId]          // Accepted → Create Invoice
 /receivables
 /payments
+/finance/matching                    // N2-FIN-005 Supplier Bill review queue
+/finance/matching/[billId]           // Ordered→Received→Billed→Variance + exceptions
 /compliance/nrs            // Mature list, MVP2 detail panel only  KIV × NRS SPEC
 /settings/*                // team  cut — Membership+Role covers RECON §2 row4
 ```
