@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { AiAnswerBlock } from "@/components/kivo/ai-answer-block";
+import { ArtifactRenderer } from "@/components/kivo/generated-ui";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import {
   streamInteractionEvents,
   type InteractionEvent,
 } from "@/lib/experience/interaction-stream";
+import { emitExperienceTelemetry } from "@/lib/experience/telemetry";
 import type { AskResponse } from "@/features/foundation/api";
 
 type RunState =
@@ -122,9 +124,9 @@ export default function AskOndarPage() {
   const [intent, setIntent] = useState<IntentResolution | null>(null);
   const [events, setEvents] = useState<InteractionEvent[]>([]);
   const [answer, setAnswer] = useState<AskResponse | null>(null);
-  const [artifacts, setArtifacts] = useState<StreamArtifact[]>([]);
-  const [selectedArtifact, setSelectedArtifact] =
-    useState<StreamArtifact | null>(null);
+  const [artifacts, setArtifacts] = useState<
+    Array<{ key: string; artifact: StreamArtifact }>
+  >([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceSuggestion[]>([]);
   const [runState, setRunState] = useState<RunState>("IDLE");
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +164,6 @@ export default function AskOndarPage() {
     setEvents([]);
     setArtifacts([]);
     setWorkspaces([]);
-    setSelectedArtifact(null);
     setLastQuestion(text);
 
     try {
@@ -204,10 +205,16 @@ export default function AskOndarPage() {
             if (artifact) {
               setArtifacts((current) =>
                 current.some(
-                  (item) => item.artifact_id === artifact.artifact_id,
+                  (item) => item.key === streamEvent.interaction_event_id,
                 )
                   ? current
-                  : [...current, artifact],
+                  : [
+                      ...current,
+                      {
+                        key: streamEvent.interaction_event_id,
+                        artifact,
+                      },
+                    ],
               );
             }
           }
@@ -471,65 +478,20 @@ export default function AskOndarPage() {
       ) : null}
 
       {artifacts.length ? (
-        <section aria-labelledby="ask-artifacts-heading">
-          <h2 id="ask-artifacts-heading" className="mb-2 text-sm font-semibold">
-            Artifacts
+        <section aria-labelledby="ask-artifacts-heading" className="space-y-3">
+          <h2 id="ask-artifacts-heading" className="text-sm font-semibold">
+            Generated views
           </h2>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {artifacts.map((artifact) => (
-              <button
-                key={artifact.artifact_id}
-                type="button"
-                className="rounded-md border p-3 text-left transition-colors hover:bg-neutral-50"
-                onClick={() => setSelectedArtifact(artifact)}
-              >
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {artifact.artifact_type}
-                </div>
-                <div className="mt-1 font-medium">{artifact.title}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {artifact.authority_class ?? "Unknown authority"} ·{" "}
-                  {artifact.persistence_mode ?? "Unknown persistence"}
-                </div>
-              </button>
-            ))}
-          </div>
+          {artifacts.map((item) => (
+            <ArtifactRenderer
+              key={item.key}
+              artifact={item.artifact}
+              resolvers={{ resolveEntityHref: entityWorkspaceHref }}
+              onTelemetry={emitExperienceTelemetry}
+            />
+          ))}
         </section>
       ) : null}
-
-      {selectedArtifact ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle>{selectedArtifact.title}</CardTitle>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {selectedArtifact.artifact_type} ·{" "}
-                  {selectedArtifact.render_mode ?? "Registered renderer pending"}
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedArtifact(null)}
-              >
-                Close
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-neutral-50 p-3 text-xs">
-              {JSON.stringify(selectedArtifact.data ?? {}, null, 2)}
-            </pre>
-            <p className="mt-2 text-xs text-muted-foreground">
-              FE-014 / EXP-FE-001 will replace this safe inspection view with
-              registered typed renderers.
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
-
       {answer ? <AiAnswerBlock result={answer} /> : null}
 
       {!answer &&
