@@ -71,27 +71,41 @@ describe("Universal Ask runtime", () => {
     ).toBeNull();
   });
 
-  it("extracts the registered artifact envelope without trusting arbitrary payloads", () => {
-    expect(
-      artifactFromEventPayload({
-        artifact: {
-          artifact_id: "66666666-6666-4666-8666-666666666666",
-          artifact_type: "ANSWER",
-          title: "Receivables answer",
-          authority_class: "DERIVED",
-          persistence_mode: "PERSISTED",
-          render_mode: "INLINE",
-          data: { status: "GROUNDED" },
-        },
-      }),
-    ).toEqual({
+  it("accepts only a complete trusted artifact envelope", () => {
+    const artifact = {
       artifact_id: "66666666-6666-4666-8666-666666666666",
       artifact_type: "ANSWER",
+      schema_version: 1,
       title: "Receivables answer",
+      conversation_id: conversationId,
+      turn_id: turnId,
+      organization_id: organizationId,
       authority_class: "DERIVED",
-      persistence_mode: "PERSISTED",
+      freshness: { status: "CURRENT" },
+      source_refs: [],
+      related_entities: [],
+      allowed_interactions: ["COPY"],
       render_mode: "INLINE",
-      data: { status: "GROUNDED" },
+      persistence_mode: "PERSISTED",
+      data: {
+        status: "GROUNDED",
+        text: "One invoice is overdue.",
+        evidence_ids: [],
+        unknowns: [],
+        conflicts: [],
+      },
+      created_at: "2026-09-21T06:00:00+00:00",
+      expires_at: null,
+    };
+
+    expect(
+      artifactFromEventPayload({ artifact }),
+    ).toMatchObject({
+      artifact_id: artifact.artifact_id,
+      artifact_type: "ANSWER",
+      schema_version: 1,
+      render_mode: "INLINE",
+      data: artifact.data,
     });
 
     expect(
