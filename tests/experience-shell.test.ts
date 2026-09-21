@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   isSafeAppHref,
@@ -30,6 +30,10 @@ describe("FE-018 shell continuity", () => {
     installStorage();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-21T08:00:00+01:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("accepts only internal app routes", () => {
