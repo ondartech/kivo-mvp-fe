@@ -36,6 +36,7 @@ const domainNav = [
   { label: "Customers", href: "/app/customers" },
   { label: "Receivables", href: "/app/receivables" },
   { label: "Payments", href: "/app/payments" },
+  { label: "Finance", href: "/app/finance/matching" },
 ];
 
 type Panel = "attention" | "work" | "context" | "notifications" | null;
