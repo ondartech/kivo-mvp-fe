@@ -621,13 +621,15 @@ export function ConflictBlock({
 export function ErrorBlock({
   data,
   meta,
+  title = "Unable to render result",
 }: {
   data: ErrorArtifactData;
   meta?: ReadPrimitiveMeta;
+  title?: string;
 }) {
   return (
     <Notice
-      title="Unable to render result"
+      title={title}
       code={data.code}
       message={data.message}
       meta={meta}
