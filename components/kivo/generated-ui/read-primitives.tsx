@@ -30,6 +30,10 @@ export type EntityHrefResolver = (
   entity: ExperienceEntityRef,
 ) => string | null;
 
+export type EvidenceHrefResolver = (
+  item: EvidenceArtifactItem,
+) => string | null;
+
 function humanize(value: string): string {
   return value
     .toLowerCase()
@@ -195,9 +199,11 @@ export function AnswerBlock({
 function EvidenceItemView({
   item,
   resolveEntityHref,
+  resolveSourceHref,
 }: {
   item: EvidenceArtifactItem;
   resolveEntityHref?: EntityHrefResolver;
+  resolveSourceHref?: EvidenceHrefResolver;
 }) {
   const entity =
     item.entity_id && item.entity_type
@@ -207,7 +213,9 @@ function EvidenceItemView({
           title: item.title,
         }
       : null;
-  const href = entity && resolveEntityHref ? resolveEntityHref(entity) : null;
+  const href =
+    resolveSourceHref?.(item) ??
+    (entity && resolveEntityHref ? resolveEntityHref(entity) : null);
   const body = (
     <div className="rounded-md border bg-neutral-50 p-3">
       <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -240,11 +248,13 @@ export function EvidenceBlock({
   title = "Evidence",
   meta,
   resolveEntityHref,
+  resolveSourceHref,
 }: {
   data: EvidenceArtifactData;
   title?: string;
   meta?: ReadPrimitiveMeta;
   resolveEntityHref?: EntityHrefResolver;
+  resolveSourceHref?: EvidenceHrefResolver;
 }) {
   return (
     <PrimitiveFrame title={title} meta={meta}>
@@ -254,6 +264,7 @@ export function EvidenceBlock({
             key={item.evidence_id}
             item={item}
             resolveEntityHref={resolveEntityHref}
+            resolveSourceHref={resolveSourceHref}
           />
         ))}
       </div>
