@@ -36,7 +36,7 @@ const domainNav = [
   { label: "Customers", href: "/app/customers" },
   { label: "Receivables", href: "/app/receivables" },
   { label: "Payments", href: "/app/payments" },
-  { label: "Finance", href: "/app/finance/matching" },
+  { label: "Finance", href: "/app/finance/accounts", activePrefix: "/app/finance" },
 ];
 
 type Panel = "attention" | "work" | "context" | "notifications" | null;
@@ -174,7 +174,7 @@ export function AppShell({
             aria-label="Domain navigation"
           >
             {domainNav.map((item) => {
-              const active = pathname?.startsWith(item.href);
+              const active = pathname?.startsWith(item.activePrefix ?? item.href);
               return (
                 <Link
                   key={item.href}
@@ -523,7 +523,7 @@ export function AppShell({
             href={item.href}
             className={cn(
               "whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium",
-              pathname?.startsWith(item.href)
+              pathname?.startsWith(item.activePrefix ?? item.href)
                 ? "bg-brand text-brand-foreground"
                 : "bg-surface",
             )}
