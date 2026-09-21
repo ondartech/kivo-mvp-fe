@@ -233,7 +233,11 @@ export default function AskOndarPage() {
       }
 
       setRunState("ANSWERING");
-      const grounded = await askGrounded(scope.organizationId, text);
+      const grounded = await askGrounded(
+        scope.organizationId,
+        text,
+        resolvedIntent.intent?.referenced_entities[0],
+      );
       setAnswer(grounded);
       setQuestion("");
     } catch (caught) {
