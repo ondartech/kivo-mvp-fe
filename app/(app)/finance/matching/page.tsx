@@ -87,7 +87,10 @@ export default function FinanceMatchingPage() {
       <PageHeader
         eyebrow="Finance"
         title="Supplier Bill match review"
-        description="Review deterministic two-way and three-way matching evidence before supplier obligations move forward."
+        description={
+          "Review deterministic two-way and three-way matching evidence " +
+          "before supplier obligations move forward."
+        }
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -156,7 +159,11 @@ export default function FinanceMatchingPage() {
         />
       ) : visibleRows.length === 0 ? (
         <EmptyState
-          title={filter === "ALL" ? "No Supplier Bills to review" : "No bills in this view"}
+          title={
+            filter === "ALL"
+              ? "No Supplier Bills to review"
+              : "No bills in this view"
+          }
           description={
             filter === "MATCHED"
               ? "No current Supplier Bills have completed a clean match yet."
