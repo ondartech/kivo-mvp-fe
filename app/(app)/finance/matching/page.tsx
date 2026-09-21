@@ -225,13 +225,13 @@ export default function FinanceMatchingPage() {
                   ) : null}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Link
-                    href={`/app/finance/matching/${item.supplier_bill_id}`}
-                  >
-                    <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" asChild>
+                    <Link
+                      href={`/app/finance/matching/${item.supplier_bill_id}`}
+                    >
                       Review
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
