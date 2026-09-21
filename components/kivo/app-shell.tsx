@@ -460,6 +460,13 @@ export function AppShell({
             </button>
             <button
               type="button"
+              onClick={() => togglePanel("notifications")}
+              className="whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium"
+            >
+              Notifications
+            </button>
+            <button
+              type="button"
               disabled
               className="whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground opacity-60"
             >
@@ -490,6 +497,16 @@ export function AppShell({
               <div className="mt-1">
                 Branch: <code>{shortId(activeBranchId)}</code>
               </div>
+            </div>
+          ) : null}
+          {panel === "notifications" ? (
+            <div className="mt-2 rounded-lg border bg-surface p-3 text-xs text-muted-foreground">
+              A separate notification feed is not available in L1. Operational
+              signals are surfaced through{" "}
+              <Link href="/app/attention" className="font-medium text-foreground">
+                Attention
+              </Link>
+              .
             </div>
           ) : null}
         </div>
