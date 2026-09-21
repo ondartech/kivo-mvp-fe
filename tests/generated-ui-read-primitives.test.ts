@@ -12,6 +12,7 @@ import {
   answerArtifactDataSchema,
   dataTableArtifactDataSchema,
   evidenceArtifactDataSchema,
+  isSupportedReadArtifactSchema,
   readArtifactDataSchemas,
 } from "@/lib/experience/read-artifact-contracts";
 
@@ -32,6 +33,13 @@ describe("FE-014 Generated UI read primitives", () => {
         "WARNING",
       ].sort(),
     );
+  });
+
+  it("accepts only registered L1 schema version 1 types", () => {
+    expect(isSupportedReadArtifactSchema("ANSWER", 1)).toBe(true);
+    expect(isSupportedReadArtifactSchema("DATA_TABLE", 1)).toBe(true);
+    expect(isSupportedReadArtifactSchema("ANSWER", 2)).toBe(false);
+    expect(isSupportedReadArtifactSchema("ARBITRARY_HTML", 1)).toBe(false);
   });
 
   it("rejects unknown fields rather than accepting arbitrary model payloads", () => {
@@ -100,7 +108,7 @@ describe("FE-014 Generated UI read primitives", () => {
     expect(markup).toContain("Stale");
   });
 
-  it("opens evidence only through an explicit permitted entity resolver", () => {
+  it("opens evidence only through an explicit permitted resolver", () => {
     const data = evidenceArtifactDataSchema.parse({
       items: [
         {
@@ -118,16 +126,26 @@ describe("FE-014 Generated UI read primitives", () => {
     const withoutResolver = renderToStaticMarkup(
       React.createElement(EvidenceBlock, { data }),
     );
-    const withResolver = renderToStaticMarkup(
+    const withEntityResolver = renderToStaticMarkup(
       React.createElement(EvidenceBlock, {
         data,
-        resolveEntityHref: () => "/app/invoices/11111111-1111-4111-8111-111111111111",
+        resolveEntityHref: () =>
+          "/app/invoices/11111111-1111-4111-8111-111111111111",
+      }),
+    );
+    const withSourceResolver = renderToStaticMarkup(
+      React.createElement(EvidenceBlock, {
+        data,
+        resolveSourceHref: () => "/app/documents/evidence/invoice-1",
       }),
     );
 
     expect(withoutResolver).not.toContain('href="');
-    expect(withResolver).toContain(
+    expect(withEntityResolver).toContain(
       'href="/app/invoices/11111111-1111-4111-8111-111111111111"',
+    );
+    expect(withSourceResolver).toContain(
+      'href="/app/documents/evidence/invoice-1"',
     );
   });
 
