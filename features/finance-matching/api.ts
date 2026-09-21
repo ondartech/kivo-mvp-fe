@@ -63,7 +63,9 @@ export function useMatchReviewQueue(orgId: string) {
         `${baseUrl(orgId)}/finance/supplier-bill-match-reviews`,
         { method: "GET" },
       );
-      return parseResponse(response, (value) => matchReviewQueueSchema.parse(value));
+      return parseResponse(response, (value) =>
+        matchReviewQueueSchema.parse(value),
+      );
     },
     enabled: isOrganizationId(orgId),
   });
@@ -113,7 +115,10 @@ export function useMatchExceptions(
         matchExceptionListSchema.parse(value),
       );
     },
-    enabled: isOrganizationId(orgId) && Boolean(billId),
+    enabled:
+      isOrganizationId(orgId) &&
+      Boolean(billId) &&
+      Boolean(evaluationId),
   });
 }
 
@@ -162,7 +167,8 @@ export function useResolveMatchException(orgId: string, billId: string) {
         input.resolutionCode,
       );
       const response = await fetchWithAuth(
-        `${baseUrl(orgId)}/finance/supplier-bills/${billId}/match-exceptions/${input.exceptionId}/resolve`,
+        `${baseUrl(orgId)}/finance/supplier-bills/${billId}/` +
+          `match-exceptions/${input.exceptionId}/resolve`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
