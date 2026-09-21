@@ -237,9 +237,9 @@ export default function SupplierBillMatchReviewPage() {
         }
         actions={
           <div className="flex gap-2">
-            <Link href="/app/finance/matching">
-              <Button variant="outline">Back to queue</Button>
-            </Link>
+            <Button variant="outline" asChild>
+              <Link href="/app/finance/matching">Back to queue</Link>
+            </Button>
             {bill ? (
               <Button
                 loading={evaluate.isPending}
