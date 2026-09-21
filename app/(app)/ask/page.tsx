@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { AiAnswerBlock } from "@/components/kivo/ai-answer-block";
+import { ArtifactRenderer } from "@/components/kivo/generated-ui";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import {
   streamInteractionEvents,
   type InteractionEvent,
 } from "@/lib/experience/interaction-stream";
+import { emitExperienceTelemetry } from "@/lib/experience/telemetry";
 import type { AskResponse } from "@/features/foundation/api";
 
 type RunState =
@@ -498,36 +500,29 @@ export default function AskOndarPage() {
       ) : null}
 
       {selectedArtifact ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle>{selectedArtifact.title}</CardTitle>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {selectedArtifact.artifact_type} ·{" "}
-                  {selectedArtifact.render_mode ?? "Registered renderer pending"}
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedArtifact(null)}
-              >
-                Close
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-neutral-50 p-3 text-xs">
-              {JSON.stringify(selectedArtifact.data ?? {}, null, 2)}
-            </pre>
-            <p className="mt-2 text-xs text-muted-foreground">
-              FE-014 / EXP-FE-001 will replace this safe inspection view with
-              registered typed renderers.
-            </p>
-          </CardContent>
-        </Card>
+        <section
+          aria-labelledby="selected-artifact-heading"
+          className="space-y-2"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="selected-artifact-heading" className="text-sm font-semibold">
+              Generated view
+            </h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedArtifact(null)}
+            >
+              Close
+            </Button>
+          </div>
+          <ArtifactRenderer
+            artifact={selectedArtifact}
+            resolvers={{ resolveEntityHref: entityWorkspaceHref }}
+            onTelemetry={emitExperienceTelemetry}
+          />
+        </section>
       ) : null}
 
       {answer ? <AiAnswerBlock result={answer} /> : null}
