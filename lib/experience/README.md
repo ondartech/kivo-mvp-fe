@@ -121,3 +121,54 @@ instead of being silently discarded.
 
 The full L2 registry will extend this same mechanism after EXP-BE-006 adds
 proposal/action/workspace artifact families.
+
+## FE-018 — Experience Shell v1
+
+The authenticated application shell now treats the Experience System as the
+primary coordination layer while preserving deterministic domain navigation.
+
+Primary shell controls:
+
+- Ask Ondar, with Voice visibly reserved for the future voice runtime;
+- Attention summary with open / critical / high counts;
+- recent and pinned work;
+- explicit organization and branch context;
+- Notifications affordance;
+- Search as the explicit retrieval/navigation fallback;
+- User / Settings.
+
+Deterministic domain navigation remains available for Dashboard, Invoices,
+Customers, Receivables and Payments. L1 does not remove that navigation because
+conversation/workspace task coverage has not yet been measured broadly enough.
+
+### Recent / pinned work in L1
+
+The Workspace Registry and durable recent/pinned continuity are L2 capabilities.
+FE-018 therefore stores only browser-local route metadata for currently visited
+deterministic domain workspaces:
+
+```text
+href
+display title derived from href
+visited timestamp
+```
+
+The store is scoped by organization ID and rejects non-`/app/` URLs. It does
+not cache business data, authorization decisions, entity payloads or membership.
+The backend remains authoritative every time a route is opened.
+
+EXP-FE-003 will replace/extend this browser-local continuity with durable,
+authorization-aware workspace/conversation continuity.
+
+### Org / branch context
+
+The shell reads the same Experience context keys used by Universal Ask and shows
+the active organization and optional branch. It does not offer an arbitrary
+tenant-ID switcher because a canonical organization/branch directory is not yet
+wired into this frontend.
+
+### Notifications
+
+There is no separate notification feed in the current L1 backend. The shell
+exposes Notifications as a first-class affordance but points operational signals
+to Attention rather than fabricating notification records.
