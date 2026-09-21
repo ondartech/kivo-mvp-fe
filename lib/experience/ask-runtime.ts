@@ -265,6 +265,7 @@ export async function resolveIntent(
 export async function askGrounded(
   organizationId: string,
   question: string,
+  anchor?: ExperienceEntityRef,
 ): Promise<AskResponse> {
   const response = await fetchWithAuth(`${orgBase(organizationId)}/ask`, {
     method: "POST",
@@ -273,6 +274,8 @@ export async function askGrounded(
       question,
       entity_types: [],
       limit: 20,
+      anchor_entity_type: anchor?.entity_type ?? null,
+      anchor_entity_id: anchor?.entity_id ?? null,
       graph_edge_types: [],
     }),
   });
