@@ -178,3 +178,11 @@ export function reviewPriority(item: MatchReviewQueueItem): number {
   if (item.match_result === "PARTIAL_MATCH") return 4;
   return 5;
 }
+
+
+export function formatDecimalText(value: string | null): string {
+  if (value === null) return "—";
+  if (!value.includes(".")) return value;
+  const trimmed = value.replace(/0+$/, "").replace(/\.$/, "");
+  return trimmed || "0";
+}
