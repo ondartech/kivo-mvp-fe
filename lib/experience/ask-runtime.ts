@@ -3,20 +3,14 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { fetchWithAuth } from "@/lib/api-client";
 import type { AskResponse } from "@/features/foundation/api";
+import {
+  experienceEntityRefSchema,
+  type ExperienceEntityRef,
+} from "@/lib/experience/read-artifact-contracts";
 
 const uuid = z.string().uuid();
 
-export const experienceEntityRefSchema = z
-  .object({
-    entity_type: z.string().min(1),
-    entity_id: uuid,
-    title: z.string().nullable().optional(),
-    source_reference: z.string().nullable().optional(),
-    score: z.number().nullable().optional(),
-  })
-  .strict();
-
-export type ExperienceEntityRef = z.infer<typeof experienceEntityRefSchema>;
+export type { ExperienceEntityRef };
 
 export const conversationSchema = z.object({
   id: uuid,
