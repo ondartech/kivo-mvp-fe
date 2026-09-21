@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useState, type FormEvent } from "react";
 
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
 import { PageHeader } from "@/components/kivo/page-header";
@@ -63,7 +63,11 @@ function comparisonSignals(line: MatchLine): string[] {
 function EvidencePairs({ value }: { value: Record<string, unknown> }) {
   const entries = Object.entries(value).slice(0, 10);
   if (!entries.length) {
-    return <span className="text-xs text-muted-foreground">No structured variance details.</span>;
+    return (
+      <span className="text-xs text-muted-foreground">
+        No structured variance details.
+      </span>
+    );
   }
   return (
     <dl className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
@@ -129,17 +133,23 @@ function ExceptionResolution({
   if (!canResolve) {
     return (
       <div className="mt-3 rounded-md border bg-neutral-50 p-3 text-xs text-muted-foreground">
-        Historical evidence only. Resolve against the current Bill version and current evaluation.
+        Historical evidence only. Resolve against the current Bill version and
+        current evaluation.
       </div>
     );
   }
 
   return (
-    <form onSubmit={submit} className="mt-3 space-y-2 rounded-md border bg-neutral-50 p-3">
+    <form
+      onSubmit={submit}
+      className="mt-3 space-y-2 rounded-md border bg-neutral-50 p-3"
+    >
       <div className="grid gap-2 sm:grid-cols-[14rem_1fr_auto]">
         <select
           value={code}
-          onChange={(event) => setCode(event.target.value as MatchResolutionCode)}
+          onChange={(event) =>
+            setCode(event.target.value as MatchResolutionCode)
+          }
           className="h-9 rounded-md border bg-surface px-3 text-sm"
           aria-label="Resolution code"
         >
@@ -173,7 +183,8 @@ function ExceptionResolution({
         <p className="text-xs text-success">Resolution evidence recorded.</p>
       ) : (
         <p className="text-xs text-muted-foreground">
-          This records review evidence; it does not mutate the Bill, Order, receipt, or match facts.
+          This records review evidence; it does not mutate the Bill, Order,
+          receipt, or match facts.
         </p>
       )}
     </form>
@@ -219,7 +230,9 @@ export default function SupplierBillMatchReviewPage() {
         title={bill ? bill.bill_number : "Supplier Bill match review"}
         description={
           bill
-            ? `${supplierDisplayName(bill.supplier_snapshot)} · Supplier invoice ${bill.supplier_invoice_number}`
+            ? `${supplierDisplayName(
+                bill.supplier_snapshot,
+              )} · Supplier invoice ${bill.supplier_invoice_number}`
             : `Supplier Bill ${billId}`
         }
         actions={
@@ -262,7 +275,10 @@ export default function SupplierBillMatchReviewPage() {
       ) : !latest ? (
         <EmptyState
           title="No match evaluation yet"
-          description="Run the deterministic match engine to compare this Supplier Bill with its Purchase Order and receipt or service-acceptance evidence."
+          description={
+            "Run the deterministic match engine to compare this Supplier Bill " +
+            "with its Purchase Order and receipt or service-acceptance evidence."
+          }
           action={
             bill
               ? {
@@ -330,7 +346,8 @@ export default function SupplierBillMatchReviewPage() {
             </CardHeader>
             <CardContent>
               <p className="mb-3 text-xs text-muted-foreground">
-                Quantities and comparison outcomes are server-derived. The frontend does not recompute financial truth.
+                Quantities and comparison outcomes are server-derived. The
+                frontend does not recompute financial truth.
               </p>
               <Table>
                 <TableHeader>
@@ -348,7 +365,9 @@ export default function SupplierBillMatchReviewPage() {
                     return (
                       <TableRow key={line.id}>
                         <TableCell>
-                          <div className="font-medium">{billLineDescription(line)}</div>
+                          <div className="font-medium">
+                            {billLineDescription(line)}
+                          </div>
                           <div className="mt-1 text-xs text-muted-foreground">
                             Applied {formatDecimalText(line.applied_quantity)}
                           </div>
@@ -367,7 +386,9 @@ export default function SupplierBillMatchReviewPage() {
                             {line.result.replaceAll("_", " ")}
                           </Badge>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            {signals.length ? signals.join(" · ") : "No deterministic variance"}
+                            {signals.length
+                              ? signals.join(" · ")
+                              : "No deterministic variance"}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -392,7 +413,10 @@ export default function SupplierBillMatchReviewPage() {
                 <ErrorState
                   title="Exceptions unavailable"
                   description={exceptions.error.message}
-                  retry={{ label: "Retry", onClick: () => void exceptions.refetch() }}
+                  retry={{
+                    label: "Retry",
+                    onClick: () => void exceptions.refetch(),
+                  }}
                 />
               ) : exceptions.data?.data.length ? (
                 exceptions.data.data.map((exception) => (
@@ -411,9 +435,13 @@ export default function SupplierBillMatchReviewPage() {
                       </Badge>
                       <Badge variant="neutral">{exception.status}</Badge>
                       {exception.material ? (
-                        <span className="text-xs font-medium text-critical">Material</span>
+                        <span className="text-xs font-medium text-critical">
+                          Material
+                        </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Reviewable</span>
+                        <span className="text-xs text-muted-foreground">
+                          Reviewable
+                        </span>
                       )}
                     </div>
                     <div className="mt-3">
@@ -422,7 +450,10 @@ export default function SupplierBillMatchReviewPage() {
                     {exception.status === "RESOLVED" ? (
                       <div className="mt-3 rounded-md border bg-neutral-50 p-3 text-sm">
                         <div className="font-medium">
-                          {(exception.resolution_code ?? "Resolved").replaceAll("_", " ")}
+                          {(exception.resolution_code ?? "Resolved").replaceAll(
+                            "_",
+                            " ",
+                          )}
                         </div>
                         <div className="mt-1 text-muted-foreground">
                           {exception.resolution_reason}
@@ -463,7 +494,8 @@ export default function SupplierBillMatchReviewPage() {
                         {evaluation.result.replaceAll("_", " ")}
                       </Badge>
                       <span className="ml-2 text-muted-foreground">
-                        {evaluation.match_mode.replaceAll("_", " ")} · Bill v{evaluation.bill_version}
+                        {evaluation.match_mode.replaceAll("_", " ")} · Bill v
+                        {evaluation.bill_version}
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
