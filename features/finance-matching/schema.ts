@@ -125,7 +125,7 @@ export const matchExceptionSchema = z
     fingerprint: z.string(),
     variance: z.record(z.unknown()),
     evidence: z.record(z.unknown()),
-    resolution_code: z.string().nullable(),
+    resolution_code: matchResolutionCodeSchema.nullable(),
     resolution_reason: z.string().nullable(),
     resolved_by_user_id: z.string().uuid().nullable(),
     resolved_at: z.string().nullable(),
@@ -178,7 +178,6 @@ export function reviewPriority(item: MatchReviewQueueItem): number {
   if (item.match_result === "PARTIAL_MATCH") return 4;
   return 5;
 }
-
 
 export function formatDecimalText(value: string | null): string {
   if (value === null) return "—";
