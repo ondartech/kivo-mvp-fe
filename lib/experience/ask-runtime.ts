@@ -4,6 +4,10 @@ import { env } from "@/lib/env";
 import { fetchWithAuth } from "@/lib/api-client";
 import type { AskResponse } from "@/features/foundation/api";
 import {
+  artifactEnvelopeSchema,
+  type ArtifactEnvelope,
+} from "@/lib/experience/artifact-envelope";
+import {
   experienceEntityRefSchema,
   type ExperienceEntityRef,
 } from "@/lib/experience/read-artifact-contracts";
@@ -90,15 +94,7 @@ export type ExperienceScope = {
   branchId: string | null;
 };
 
-export type StreamArtifact = {
-  artifact_id: string;
-  artifact_type: string;
-  title: string;
-  authority_class?: string;
-  persistence_mode?: string;
-  render_mode?: string;
-  data?: Record<string, unknown>;
-};
+export type StreamArtifact = ArtifactEnvelope;
 
 export type WorkspaceSuggestion = {
   title: string;
@@ -321,35 +317,8 @@ export function entityWorkspaceHref(
 export function artifactFromEventPayload(
   payload: Record<string, unknown>,
 ): StreamArtifact | null {
-  const value = payload.artifact;
-  if (!value || typeof value !== "object") return null;
-  const artifact = value as Record<string, unknown>;
-  if (
-    typeof artifact.artifact_id !== "string" ||
-    typeof artifact.artifact_type !== "string" ||
-    typeof artifact.title !== "string"
-  ) {
-    return null;
-  }
-  return {
-    artifact_id: artifact.artifact_id,
-    artifact_type: artifact.artifact_type,
-    title: artifact.title,
-    authority_class:
-      typeof artifact.authority_class === "string"
-        ? artifact.authority_class
-        : undefined,
-    persistence_mode:
-      typeof artifact.persistence_mode === "string"
-        ? artifact.persistence_mode
-        : undefined,
-    render_mode:
-      typeof artifact.render_mode === "string" ? artifact.render_mode : undefined,
-    data:
-      artifact.data && typeof artifact.data === "object"
-        ? (artifact.data as Record<string, unknown>)
-        : undefined,
-  };
+  const parsed = artifactEnvelopeSchema.safeParse(payload.artifact);
+  return parsed.success ? parsed.data : null;
 }
 
 export function workspaceFromEventPayload(
