@@ -336,6 +336,19 @@ type BoundaryState = {
   failed: boolean;
 };
 
+function RegisteredArtifactView({
+  descriptor,
+  data,
+  context,
+}: {
+  descriptor: Descriptor;
+  data: unknown;
+  context: RenderContext;
+}) {
+  return <>{descriptor.render(data, context)}</>;
+}
+
+
 class ArtifactRenderBoundary extends Component<BoundaryProps, BoundaryState> {
   state: BoundaryState = { failed: false };
 
@@ -476,10 +489,15 @@ export function ArtifactRenderer({
 
   return (
     <ArtifactRenderBoundary
+      key={envelope.data.artifact_id}
       artifact={artifact}
       onTelemetry={onTelemetry}
     >
-      {descriptor.render(parsedData.data, context)}
+      <RegisteredArtifactView
+        descriptor={descriptor}
+        data={parsedData.data}
+        context={context}
+      />
     </ArtifactRenderBoundary>
   );
 }
