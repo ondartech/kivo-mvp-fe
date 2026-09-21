@@ -299,8 +299,9 @@ export function interactionStreamUrl(
   organizationId: string,
   conversationId: string,
   turnId: string,
+  follow = true,
 ): string {
-  return `${orgBase(organizationId)}/conversations/${conversationId}/turns/${turnId}/events?follow=true`;
+  return `${orgBase(organizationId)}/conversations/${conversationId}/turns/${turnId}/events?follow=${follow ? "true" : "false"}`;
 }
 
 export function entityWorkspaceHref(
