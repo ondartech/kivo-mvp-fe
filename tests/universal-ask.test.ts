@@ -71,49 +71,21 @@ describe("Universal Ask runtime", () => {
     ).toBeNull();
   });
 
-  it("accepts only a complete trusted artifact envelope", () => {
+  it("passes raw artifact objects to the trusted renderer registry", () => {
     const artifact = {
       artifact_id: "66666666-6666-4666-8666-666666666666",
       artifact_type: "ANSWER",
-      schema_version: 1,
-      title: "Receivables answer",
-      conversation_id: conversationId,
-      turn_id: turnId,
-      organization_id: organizationId,
-      authority_class: "DERIVED",
-      freshness: { status: "CURRENT" },
-      source_refs: [],
-      related_entities: [],
-      allowed_interactions: ["COPY"],
-      render_mode: "INLINE",
-      persistence_mode: "PERSISTED",
-      data: {
-        status: "GROUNDED",
-        text: "One invoice is overdue.",
-        evidence_ids: [],
-        unknowns: [],
-        conflicts: [],
-      },
-      created_at: "2026-09-21T06:00:00+00:00",
-      expires_at: null,
+      schema_version: 99,
+      title: "Future artifact",
     };
 
     expect(
       artifactFromEventPayload({ artifact }),
-    ).toMatchObject({
-      artifact_id: artifact.artifact_id,
-      artifact_type: "ANSWER",
-      schema_version: 1,
-      render_mode: "INLINE",
-      data: artifact.data,
-    });
+    ).toEqual(artifact);
 
     expect(
       artifactFromEventPayload({
-        artifact: {
-          artifact_type: "ANSWER",
-          title: "Missing identity",
-        },
+        artifact: "<script>alert(1)</script>",
       }),
     ).toBeNull();
   });
