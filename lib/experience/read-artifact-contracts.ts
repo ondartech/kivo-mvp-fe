@@ -235,3 +235,16 @@ export const readArtifactDataSchemas = {
 } as const;
 
 export type ReadArtifactType = keyof typeof readArtifactDataSchemas;
+
+
+export const READ_ARTIFACT_SCHEMA_VERSION = 1 as const;
+
+export function isSupportedReadArtifactSchema(
+  artifactType: string,
+  schemaVersion: number,
+): artifactType is ReadArtifactType {
+  return (
+    schemaVersion === READ_ARTIFACT_SCHEMA_VERSION &&
+    Object.prototype.hasOwnProperty.call(readArtifactDataSchemas, artifactType)
+  );
+}
