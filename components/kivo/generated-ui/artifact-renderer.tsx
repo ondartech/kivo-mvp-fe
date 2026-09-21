@@ -17,7 +17,7 @@ import {
   WarningBlock,
   type EntityHrefResolver,
   type EvidenceHrefResolver,
-} from "@/components/kivo/generated-ui";
+} from "@/components/kivo/generated-ui/read-primitives";
 import {
   artifactEnvelopeSchema,
   type ArtifactEnvelope,
@@ -286,6 +286,7 @@ function failureView(
 ): ReactNode {
   return (
     <ErrorBlock
+      title={title}
       data={{
         code: "ARTIFACT_RENDER_FAILED",
         message,
@@ -347,7 +348,6 @@ function RegisteredArtifactView({
 }) {
   return <>{descriptor.render(data, context)}</>;
 }
-
 
 class ArtifactRenderBoundary extends Component<BoundaryProps, BoundaryState> {
   state: BoundaryState = { failed: false };
