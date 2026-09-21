@@ -219,7 +219,7 @@ export async function resumeOrCreateConversation(
       const existing = await responseJson(response, conversationSchema);
       if (
         existing.status === "ACTIVE" &&
-        (branchId === null || existing.branch_id === branchId)
+        existing.branch_id === branchId
       ) {
         return existing;
       }
