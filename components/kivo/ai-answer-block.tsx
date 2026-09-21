@@ -1,90 +1,84 @@
 "use client";
 
 import type { AskResponse } from "@/features/foundation/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AnswerBlock,
+  EvidenceBlock,
+} from "@/components/kivo/generated-ui/read-primitives";
+import type {
+  AnswerArtifactData,
+  EvidenceArtifactData,
+  EvidenceArtifactItem,
+} from "@/lib/experience/read-artifact-contracts";
 
-function SourceCard({ source }: { source: AskResponse["evidence"][number] }) {
-  return (
-    <div className="rounded-md border bg-neutral-50 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {source.entity_type}
-        </span>
-        <span className="text-xs text-muted-foreground">{source.authority}</span>
-      </div>
-      <div className="mt-1 text-sm font-medium">{source.title}</div>
-      {source.snippet ? <p className="mt-1 text-sm text-muted-foreground">{source.snippet}</p> : null}
-      {source.source_reference ? (
-        <div className="mt-2 text-xs text-muted-foreground">
-          Source: <code>{source.source_reference}</code>
-        </div>
-      ) : null}
-    </div>
-  );
+function answerData(result: AskResponse): AnswerArtifactData {
+  return {
+    status:
+      result.status === "GROUNDED"
+        ? "GROUNDED"
+        : "INSUFFICIENT_EVIDENCE",
+    text: result.answer,
+    evidence_ids: result.evidence_ids,
+    unknowns: result.unknowns,
+    conflicts: result.conflicts,
+  };
+}
+
+function evidenceData(result: AskResponse): EvidenceArtifactData | null {
+  const items: EvidenceArtifactItem[] = result.evidence.flatMap((source) => {
+    if (
+      source.authority !== "AUTHORITATIVE" &&
+      source.authority !== "DERIVED" &&
+      source.authority !== "EXTERNAL_EVIDENCE"
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        evidence_id: source.evidence_id,
+        title: source.title,
+        snippet: source.snippet,
+        entity_type: source.entity_type,
+        entity_id: source.entity_id,
+        authority: source.authority,
+        source_type: source.source_type,
+      },
+    ];
+  });
+
+  return items.length ? { items } : null;
 }
 
 export function AiAnswerBlock({ result }: { result: AskResponse }) {
+  const evidence = evidenceData(result);
+
   return (
     <div className="space-y-4" data-testid="ai-answer-block">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>AI answer</CardTitle>
-            <div className="text-xs text-muted-foreground">
-              {result.provider} · {result.model} · {result.status}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="whitespace-pre-wrap text-sm leading-6">{result.answer}</div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Generated explanation. Verify decisions against the cited Ondar records below.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Grounded read response</span>
+        <span>
+          {result.provider} · {result.model}
+        </span>
+      </div>
 
-      <section aria-labelledby="answer-evidence-heading">
-        <h2 id="answer-evidence-heading" className="mb-2 text-sm font-semibold">
-          Evidence
-        </h2>
-        {result.evidence.length ? (
-          <div className="grid gap-2">
-            {result.evidence.map((source) => (
-              <SourceCard key={source.evidence_id} source={source} />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-            No source objects were cited for this answer.
-          </div>
-        )}
-      </section>
+      <AnswerBlock
+        data={answerData(result)}
+        title="AI answer"
+        meta={{ authorityClass: "DERIVED" }}
+      />
 
-      {result.unknowns.length ? (
-        <section className="rounded-md border p-3" aria-labelledby="answer-unknowns-heading">
-          <h2 id="answer-unknowns-heading" className="text-sm font-semibold">
-            Unknowns
-          </h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            {result.unknowns.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {evidence ? (
+        <EvidenceBlock data={evidence} title="Evidence" />
+      ) : (
+        <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+          No validated source objects were cited for this answer.
+        </div>
+      )}
 
-      {result.conflicts.length ? (
-        <section className="rounded-md border p-3" aria-labelledby="answer-conflicts-heading">
-          <h2 id="answer-conflicts-heading" className="text-sm font-semibold">
-            Conflicting evidence
-          </h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            {result.conflicts.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <p className="text-xs text-muted-foreground">
+        Generated explanation. Verify decisions against the cited Ondar records.
+      </p>
     </div>
   );
 }
