@@ -25,7 +25,6 @@ const nav = [
   { label: "Receivables", href: "/app/receivables" },
   { label: "Payments", href: "/app/payments" },
   { label: "Search", href: "/app/search" },
-  { label: "Ask", href: "/app/ask" },
   { label: "Settings", href: "/app/settings/business" },
 ];
 
@@ -69,6 +68,15 @@ export function AppShell({ children, orgId = "org_demo" }: { children: React.Rea
           </div>
           <div className="flex items-center gap-3">
             <Link
+              href="/app/ask"
+              className={cn(
+                "inline-flex items-center rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground transition-colors hover:bg-brand-hover",
+                pathname?.startsWith("/app/ask") && "ring-2 ring-ring",
+              )}
+            >
+              Ask Ondar
+            </Link>
+            <Link
               href="/app/attention"
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border bg-surface px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-50",
@@ -98,6 +106,20 @@ export function AppShell({ children, orgId = "org_demo" }: { children: React.Rea
           </div>
         </div>
       </header>
+
+      {/* Mobile Ask remains primary; navigation is secondary. */}
+      <div className="border-b bg-surface px-4 py-2 md:hidden">
+        <Link
+          href="/app/ask"
+          className={cn(
+            "flex w-full items-center justify-between rounded-lg border bg-neutral-50 px-3 py-2 text-sm font-medium",
+            pathname?.startsWith("/app/ask") && "border-brand bg-surface",
+          )}
+        >
+          <span>Ask Ondar</span>
+          <span className="text-xs text-muted-foreground">Primary input</span>
+        </Link>
+      </div>
 
       {/* Mobile nav */}
       <nav className="flex md:hidden items-center gap-1 overflow-x-auto border-b bg-surface px-4 py-2">
