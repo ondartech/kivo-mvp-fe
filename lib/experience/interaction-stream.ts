@@ -103,9 +103,16 @@ export class InteractionEventCursor {
       return false;
     }
 
+    if (
+      event.sequence === this.lastSequence &&
+      frameId === this.lastEventId
+    ) {
+      return false;
+    }
+
     if (event.sequence <= this.lastSequence) {
       throw new InteractionStreamProtocolError(
-        "A different interaction event reused an applied sequence",
+        "A different interaction event reused or reordered an applied sequence",
         "SEQUENCE_COLLISION",
       );
     }
