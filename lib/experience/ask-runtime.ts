@@ -4,10 +4,6 @@ import { env } from "@/lib/env";
 import { fetchWithAuth } from "@/lib/api-client";
 import type { AskResponse } from "@/features/foundation/api";
 import {
-  artifactEnvelopeSchema,
-  type ArtifactEnvelope,
-} from "@/lib/experience/artifact-envelope";
-import {
   experienceEntityRefSchema,
   type ExperienceEntityRef,
 } from "@/lib/experience/read-artifact-contracts";
@@ -94,7 +90,7 @@ export type ExperienceScope = {
   branchId: string | null;
 };
 
-export type StreamArtifact = ArtifactEnvelope;
+export type StreamArtifact = Record<string, unknown>;
 
 export type WorkspaceSuggestion = {
   title: string;
@@ -317,8 +313,11 @@ export function entityWorkspaceHref(
 export function artifactFromEventPayload(
   payload: Record<string, unknown>,
 ): StreamArtifact | null {
-  const parsed = artifactEnvelopeSchema.safeParse(payload.artifact);
-  return parsed.success ? parsed.data : null;
+  const value = payload.artifact;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
 }
 
 export function workspaceFromEventPayload(
