@@ -60,7 +60,7 @@ export default function FinanceJournalDetailPage() {
       <div className="flex flex-wrap gap-2">
         <Badge variant={entry.entry_type === "SYSTEM" ? "warning" : "neutral"}>{humanize(entry.entry_type)}</Badge>
         <Badge variant={entry.status === "POSTED" ? "success" : "critical"}>{humanize(entry.status)}</Badge>
-        {entry.entry_type === "SYSTEM" ? <Badge variant="warning">No client-side creation path</Badge> : null}
+        {entry.entry_type === "SYSTEM" ? <Badge variant="warning">System-generated · read only</Badge> : null}
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
