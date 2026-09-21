@@ -64,6 +64,17 @@ describe("Experience interaction stream protocol", () => {
     expect(cursor.lastEventId).toBe(`${turnId}:1`);
   });
 
+  it("ignores a duplicate at the resume boundary", () => {
+    const cursor = new InteractionEventCursor(turnId, 1);
+    const first = event(
+      1,
+      "99999999-9999-4999-8999-999999999999",
+    );
+
+    expect(cursor.apply(`${turnId}:1`, first)).toBe(false);
+    expect(cursor.lastSequence).toBe(1);
+  });
+
   it("rejects sequence gaps instead of applying out of order", () => {
     const cursor = new InteractionEventCursor(turnId);
     const second = event(
