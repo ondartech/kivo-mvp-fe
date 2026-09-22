@@ -15,8 +15,7 @@ The production frontend runs as a Next.js standalone Node server:
 - organization vanity host: `https://{handle}.getondar.com`
 - public invoice path: `/i/{token}`
 
-`NEXT_PUBLIC_API_URL` is a **build-time public value**. It is compiled into the client
-bundle and must never contain a secret.
+`NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_MICROSOFT_AUTH_ENABLED` are **build-time public values**. They are compiled into the client bundle and must never contain secrets. Microsoft authentication defaults to disabled; only build the web image with `NEXT_PUBLIC_MICROSOFT_AUTH_ENABLED=true` after the matching backend environment has Microsoft auth enabled and its Entra credential is present in Key Vault.
 
 ## Local development
 
@@ -31,7 +30,9 @@ The development server listens on port 3000 by default.
 
 ```bash
 npm ci
-NEXT_PUBLIC_API_URL=https://api.getondar.com npm run build
+NEXT_PUBLIC_API_URL=https://api.getondar.com \
+NEXT_PUBLIC_MICROSOFT_AUTH_ENABLED=false \
+npm run build
 ```
 
 `next.config.mjs` uses `output: "standalone"` so the resulting server can run without
@@ -42,6 +43,7 @@ shipping the full development dependency tree.
 ```bash
 docker build \
   --build-arg NEXT_PUBLIC_API_URL=https://api.getondar.com \
+  --build-arg NEXT_PUBLIC_MICROSOFT_AUTH_ENABLED=false \
   -t ondar-web:local .
 docker run --rm -p 3000:3000 ondar-web:local
 ```
