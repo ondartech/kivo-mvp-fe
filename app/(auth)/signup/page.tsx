@@ -72,11 +72,13 @@ export default function SignupPage() {
               loading={oauthLoading === "google"}
               disabled={oauthLoading !== null}
             />
-            <MicrosoftButton
-              onClick={() => handleOAuth("microsoft")}
-              loading={oauthLoading === "microsoft"}
-              disabled={oauthLoading !== null}
-            />
+            {env.NEXT_PUBLIC_MICROSOFT_AUTH_ENABLED && (
+              <MicrosoftButton
+                onClick={() => handleOAuth("microsoft")}
+                loading={oauthLoading === "microsoft"}
+                disabled={oauthLoading !== null}
+              />
+            )}
           </div>
 
           <div className="relative flex items-center gap-3 py-1">
