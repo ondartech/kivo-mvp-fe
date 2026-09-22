@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 export function GoogleButton({
   onClick,
   loading,
+  disabled,
   children = "Continue with Google",
 }: {
   onClick?: () => void;
   loading?: boolean;
+  disabled?: boolean;
   children?: React.ReactNode;
 }) {
   return (
@@ -19,6 +21,7 @@ export function GoogleButton({
       className="w-full justify-center gap-2 bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200"
       onClick={onClick}
       loading={loading}
+      disabled={disabled}
       aria-label="Continue with Google"
     >
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
