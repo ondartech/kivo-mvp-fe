@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 export function MicrosoftButton({
   onClick,
   loading,
+  disabled,
   children = "Continue with Microsoft",
 }: {
   onClick?: () => void;
   loading?: boolean;
+  disabled?: boolean;
   children?: React.ReactNode;
 }) {
   return (
@@ -20,6 +22,7 @@ export function MicrosoftButton({
       className="w-full justify-center gap-2 bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200"
       onClick={onClick}
       loading={loading}
+      disabled={disabled}
       aria-label="Continue with Microsoft"
     >
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
