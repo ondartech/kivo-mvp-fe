@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { GoogleButton } from "@/components/auth/GoogleButton";
-import { startGoogleOAuth } from "@/features/auth/api";
+import { MicrosoftButton } from "@/components/auth/MicrosoftButton";
+import { beginOAuth, type OAuthProvider } from "@/features/auth/api";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 
@@ -18,24 +19,19 @@ export default function LoginPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [googleLoading, setGoogleLoading] = React.useState(false);
+  const [oauthLoading, setOAuthLoading] = React.useState<OAuthProvider | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const handleGoogle = async () => {
+  const handleOAuth = async (provider: OAuthProvider) => {
     setError(null);
-    setGoogleLoading(true);
+    setOAuthLoading(provider);
     try {
-      const redirectUri = `${window.location.origin}/auth/callback`;
-      const { authorization_url, state, code_verifier } = await startGoogleOAuth(redirectUri);
-      // Store verifier and state for exchange
-      sessionStorage.setItem("kivo_oauth_state", state);
-      sessionStorage.setItem("kivo_oauth_verifier", code_verifier);
-      sessionStorage.setItem("kivo_oauth_redirect", redirectUri);
-      window.location.href = authorization_url;
+      const authorizationUrl = await beginOAuth(provider);
+      window.location.href = authorizationUrl;
     } catch (e: any) {
-      setError(e?.message || "Failed to start Google sign-in");
-    } finally {
-      setGoogleLoading(false);
+      const providerName = provider === "google" ? "Google" : "Microsoft";
+      setError(e?.message || `Failed to start ${providerName} sign-in`);
+      setOAuthLoading(null);
     }
   };
 
@@ -80,7 +76,20 @@ export default function LoginPage() {
             <p className="text-sm text-muted-foreground">Sign in to track what you’re owed.</p>
           </div>
 
-          <GoogleButton onClick={handleGoogle} loading={googleLoading} />
+          <div className="space-y-2">
+            <GoogleButton
+              onClick={() => handleOAuth("google")}
+              loading={oauthLoading === "google"}
+              disabled={oauthLoading !== null}
+            />
+            {env.NEXT_PUBLIC_MICROSOFT_AUTH_ENABLED && (
+              <MicrosoftButton
+                onClick={() => handleOAuth("microsoft")}
+                loading={oauthLoading === "microsoft"}
+                disabled={oauthLoading !== null}
+              />
+            )}
+          </div>
 
           <div className="relative flex items-center gap-3 py-1">
             <div className="h-px flex-1 bg-zinc-200" />
