@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
@@ -35,6 +36,19 @@ export default function BusinessSettingsPage() {
             </Button>
           </div>
           <Button>Save business</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5">
+          <div className="font-medium">Document numbering</div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Configure Organization-wide or per-Branch sequences for invoices,
+            quotes, orders and supplier bills.
+          </p>
+          <Button variant="outline" size="sm" className="mt-3" asChild>
+            <Link href="/app/settings/numbering">Manage numbering</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>
