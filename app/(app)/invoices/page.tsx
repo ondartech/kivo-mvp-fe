@@ -65,7 +65,9 @@ export default function InvoicesPage() {
 
   const scopeLabel = selectedBranch
     ? `${selectedBranch.code} · ${selectedBranch.name}`
-    : "All branches";
+    : branchAccess.data?.organization_wide === false
+      ? "Select branch"
+      : "All branches";
 
   const rows = invoices.data?.data ?? [];
   const branchSelectionRequired =
@@ -79,9 +81,11 @@ export default function InvoicesPage() {
         eyebrow={scopeLabel}
         title="Invoices"
         description={
-          branchId
+          authorizedBranchId
             ? "Showing invoices attributed to the selected operating Branch."
-            : "Organization-wide invoice view across authorized Branches."
+            : branchAccess.data?.organization_wide === false
+              ? "Choose an authorized Branch to load its invoices."
+              : "Organization-wide invoice view across authorized Branches."
         }
         actions={
           <Link href="/app/invoices/new">
@@ -113,7 +117,18 @@ export default function InvoicesPage() {
         </span>
       </div>
 
-      {branchSelectionRequired ? (
+      {branchAccess.isError ? (
+        <Card>
+          <CardContent className="p-5 text-sm">
+            <div className="font-medium">Could not resolve Branch access</div>
+            <p className="mt-1 text-muted-foreground">
+              {branchAccess.error instanceof Error
+                ? branchAccess.error.message
+                : "The operating Branch request failed."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : branchSelectionRequired ? (
         <Card>
           <CardContent className="p-5 text-sm">
             <div className="font-medium">Choose an operating Branch</div>
