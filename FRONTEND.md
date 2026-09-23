@@ -664,3 +664,24 @@ FE-BRN-001.
 - Money remains decimal-string input/output and the frontend does not calculate
   invoice totals.
 
+## Receivables Branch read context — FE-BRN-003
+
+Receivables is a Branch-attributed subsidiary-ledger read surface.
+
+- List, summary and aging requests resolve one shared operating scope.
+- When an authorized Branch is selected, all three requests send the same
+  `branch_id`.
+- Organization-wide members may intentionally read `All branches`.
+- Branch-scoped members with multiple Branches must select one before any
+  Receivables read executes.
+- A membership with no effective active Branch fails closed with an explicit access
+  state; the client does not fall back to organization-wide data.
+- Stale browser Branch ids are reconciled against the server-authoritative
+  `/operating-branches` response.
+- Receivable rows render the persisted source-Invoice Branch. Payment aggregate
+  surfaces remain organization-level because one Payment can classify value across
+  Receivables from multiple Branches.
+- Dashboard/Command Center remains organization-level until its backend composed
+  projection accepts a Branch scope; the frontend does not locally filter aggregate
+  totals.
+
