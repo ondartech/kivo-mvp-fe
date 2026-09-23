@@ -7,8 +7,10 @@ export function resolveInvoiceCreateBranchId(
   access: InvoiceBranchAccess | undefined,
   activeBranchId: string | null,
 ): string | null {
-  if (activeBranchId) return activeBranchId;
-  if (access?.branches.length === 1) return access.branches[0].id;
+  if (!access) return null;
+  const allowed = new Set(access.branches.map((branch) => branch.id));
+  if (activeBranchId && allowed.has(activeBranchId)) return activeBranchId;
+  if (access.branches.length === 1) return access.branches[0].id;
   return null;
 }
 
