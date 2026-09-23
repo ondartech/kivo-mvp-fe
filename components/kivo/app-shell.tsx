@@ -36,8 +36,9 @@ function OndarMark({ className }: { className?: string }) {
 
 const domainNav = [
   { label: "Dashboard", href: "/app/dashboard" },
-  { label: "Invoices", href: "/app/invoices" },
   { label: "Customers", href: "/app/customers" },
+  { label: "Projects", href: "/app/projects" },
+  { label: "Invoices", href: "/app/invoices" },
   { label: "Receivables", href: "/app/receivables" },
   { label: "Payments", href: "/app/payments" },
   { label: "Finance", href: "/app/finance/accounts", activePrefix: "/app/finance" },
