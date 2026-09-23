@@ -590,3 +590,35 @@ It should not feel like:
 The standard is:
 
 > **Calm. Sharp. Financial. Modern. Nigerian.**
+
+## Branch operating context — FE-BRN-001
+
+The authenticated shell owns one browser-local operating scope:
+
+```text
+organizationId
+└── branchId?   # null means Organization-wide only when server access allows it
+```
+
+Branch options come only from
+`GET /api/v1/organizations/{organization_id}/operating-branches`. The browser does
+not derive Branch access from role names or IAM assignments.
+
+Rules:
+
+- Organization-wide access exposes an `All branches` context plus every active Branch.
+- Branch-scoped access exposes only server-authorized Branches.
+- A single authorized Branch is selected automatically.
+- Multiple Branch-scoped choices require explicit selection.
+- A stale/revoked Branch id is cleared when it disappears from the server response.
+- Same-tab context changes dispatch `ondar:experience-scope-changed`; storage events
+  continue to synchronize other tabs.
+- Branch context is presentation/defaulting state, never an authorization credential.
+- Domain create/list cards consume `useActiveBranchId()` in their own implementation
+  waves; the server remains authoritative for Branch validation and permissions.
+
+Ask already consumes the persisted Branch context when creating/resuming conversations.
+Search, Attention and each commercial/finance workspace must add Branch filtering only
+when their backend contract explicitly supports it; FE-BRN-001 does not invent client-side
+filter semantics.
+
