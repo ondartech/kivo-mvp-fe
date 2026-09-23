@@ -86,6 +86,15 @@ export default function ProjectsPage() {
 
   const rows = projects.data?.data ?? [];
 
+  if (!orgId) {
+    return (
+      <EmptyState
+        title="Organization context required"
+        description="Select an organization workspace before opening Projects."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
