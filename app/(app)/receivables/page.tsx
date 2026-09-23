@@ -111,6 +111,17 @@ export default function ReceivablesPage() {
             </p>
           </CardContent>
         </Card>
+      ) : branchAccess.data?.organization_wide === false &&
+          branchAccess.data.branches.length === 0 ? (
+        <Card>
+          <CardContent className="p-5 text-sm">
+            <div className="font-medium">No operating Branch access</div>
+            <p className="mt-1 text-muted-foreground">
+              Your membership currently has no active Branch available for
+              Receivables.
+            </p>
+          </CardContent>
+        </Card>
       ) : scope.selectionRequired ? (
         <Card>
           <CardContent className="p-5 text-sm">
@@ -279,8 +290,13 @@ export default function ReceivablesPage() {
                               currency={row.currency}
                               emphasis="table"
                             />
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              of {row.grand_total}
+                            <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground sm:justify-end">
+                              <span>of</span>
+                              <MoneyAmount
+                                amount={row.grand_total}
+                                currency={row.currency}
+                                emphasis="secondary"
+                              />
                             </div>
                           </div>
                         </div>
