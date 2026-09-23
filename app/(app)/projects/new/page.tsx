@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { toast } from "sonner";
 
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
@@ -68,12 +69,17 @@ export default function NewProjectPage() {
   const customerRows = customers.data?.data ?? [];
   const commercialCustomerMissing =
     kind === "COMMERCIAL" && customerRows.length === 0 && !customers.isLoading;
+  const scheduleInvalid =
+    Boolean(startDate) &&
+    Boolean(targetEndDate) &&
+    targetEndDate < startDate;
 
   const canSubmit =
     Boolean(name.trim()) &&
     Boolean(branchId) &&
     (kind === "INTERNAL" || Boolean(customerId)) &&
     /^[A-Z]{3}$/.test(currency.trim().toUpperCase()) &&
+    !scheduleInvalid &&
     !createProject.isPending;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -314,6 +320,11 @@ export default function NewProjectPage() {
                 />
               </div>
             </div>
+            {scheduleInvalid ? (
+              <p className="text-xs text-critical">
+                Target end date cannot be earlier than the start date.
+              </p>
+            ) : null}
 
             <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
               This quick-create surface intentionally does not set contract value or
