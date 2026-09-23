@@ -706,3 +706,26 @@ financial/commercial totals from separate client-side queries.
 - The Dashboard deliberately does not synthesize recent invoices/payments or local
   charts. Detail navigation goes to authoritative domain workspaces.
 
+## Finance Branch reporting context — FE-BRN-005
+
+Finance reporting uses capability-specific Branch context rather than the broader global
+membership Branch set.
+
+- Finance pages request
+  `GET /api/v1/organizations/{organization_id}/operating-branches?permission=finance:read`.
+- The browser never infers Finance scope from role names or from unrelated Branch grants.
+- Account Activity sends the selected/effective Finance `branch_id` to the canonical
+  ledger report endpoint.
+- Organization-wide Finance access may intentionally use `All branches`; a sole
+  Finance Branch auto-resolves; multiple Branch-scoped choices require explicit
+  selection.
+- A stale global Branch that is not Finance-authorized is rejected against the
+  permission-filtered context before ledger data loads.
+- Opening, period and closing balances remain server-authoritative; the frontend does
+  not filter JournalLines or recompute balances.
+- Each returned JournalLine renders its persisted Branch dimension.
+- Chart-of-Accounts metadata remains Organization-wide shared Finance metadata.
+- Journal detail links are suppressed when Finance access is Branch-scoped. A balanced
+  Journal may span multiple Branches, so the frontend does not request or fabricate a
+  partial journal view.
+
