@@ -70,3 +70,14 @@ export function buildProjectListParams(input: {
   params.set("sort", input.sort ?? "created_at:desc");
   return params;
 }
+
+export function buildProjectDashboardParams(input: {
+  recent?: number;
+  activityLimit?: number;
+} = {}): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("recent", String(input.recent ?? 5));
+  params.set("activity_limit", String(input.activityLimit ?? 10));
+  return params;
+}
+
