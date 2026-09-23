@@ -7,12 +7,12 @@ import {
   readExperienceScope,
 } from "@/lib/experience/ask-runtime";
 
-export function useActiveOrganizationId(): string | null {
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
+export function useActiveBranchId(): string | null {
+  const [branchId, setBranchId] = useState<string | null>(null);
 
   useEffect(() => {
     const refresh = () => {
-      setOrganizationId(readExperienceScope().organizationId);
+      setBranchId(readExperienceScope().branchId);
     };
     refresh();
     window.addEventListener("storage", refresh);
@@ -23,5 +23,5 @@ export function useActiveOrganizationId(): string | null {
     };
   }, []);
 
-  return organizationId;
+  return branchId;
 }

@@ -5,10 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useOpenAttentionCount } from "@/features/foundation/api";
+import { useOperatingBranches } from "@/features/organization/api";
 import {
+  EXPERIENCE_SCOPE_EVENT,
   isUuid,
   readExperienceScope,
+  writeExperienceScope,
 } from "@/lib/experience/ask-runtime";
+import { reconcileActiveBranchId } from "@/lib/experience/branch-context";
 import {
   isWorkspaceLikeHref,
   readPinnedWorkspaces,
@@ -136,8 +140,31 @@ export function AppShell({
       setPinnedWork(readPinnedWorkspaces(scope.organizationId));
     };
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(EXPERIENCE_SCOPE_EVENT, handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(EXPERIENCE_SCOPE_EVENT, handleStorage);
+    };
   }, []);
+
+  const branchAccess = useOperatingBranches(activeOrgId ?? "");
+  const branchOptions = branchAccess.data?.branches ?? [];
+  const organizationWide = branchAccess.data?.organization_wide ?? false;
+
+  useEffect(() => {
+    if (!activeOrgId || !branchAccess.data) return;
+
+    const nextBranchId = reconcileActiveBranchId(
+      branchAccess.data,
+      activeBranchId,
+    );
+    if (nextBranchId !== activeBranchId) {
+      writeExperienceScope({
+        organizationId: activeOrgId,
+        branchId: nextBranchId,
+      });
+    }
+  }, [activeBranchId, activeOrgId, branchAccess.data]);
 
   const attention = useOpenAttentionCount(activeOrgId ?? "");
   const attentionCount = attention.data?.count ?? 0;
@@ -146,11 +173,32 @@ export function AppShell({
   const currentWorkspacePinned =
     Boolean(pathname) && pinnedWork.some((item) => item.href === pathname);
 
+  const selectedBranch = useMemo(
+    () => branchOptions.find((branch) => branch.id === activeBranchId) ?? null,
+    [activeBranchId, branchOptions],
+  );
+
   const contextLabel = useMemo(() => {
     if (!activeOrgId) return "No organization";
-    if (!activeBranchId) return "Organization context";
-    return "Org + branch";
-  }, [activeBranchId, activeOrgId]);
+    if (selectedBranch) return selectedBranch.code;
+    if (branchAccess.isLoading) return "Loading branches";
+    if (organizationWide) return "All branches";
+    return branchOptions.length ? "Select branch" : "No branch access";
+  }, [
+    activeOrgId,
+    branchAccess.isLoading,
+    branchOptions.length,
+    organizationWide,
+    selectedBranch,
+  ]);
+
+  const handleBranchChange = (value: string) => {
+    if (!activeOrgId) return;
+    writeExperienceScope({
+      organizationId: activeOrgId,
+      branchId: value || null,
+    });
+  };
 
   const togglePanel = (next: Exclude<Panel, null>) => {
     setPanel((current) => (current === next ? null : next));
@@ -362,25 +410,61 @@ export function AppShell({
               </button>
               {panel === "context" ? (
                 <ShellPopover title="Business context">
-                  <dl className="space-y-2 text-sm">
+                  <div className="space-y-3 text-sm">
                     <div>
-                      <dt className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">
                         Organization
-                      </dt>
-                      <dd>
-                        <code>{activeOrgId ?? "Not selected"}</code>
-                      </dd>
+                      </div>
+                      <code className="text-xs">{activeOrgId ?? "Not selected"}</code>
                     </div>
                     <div>
-                      <dt className="text-xs text-muted-foreground">Branch</dt>
-                      <dd>
-                        <code>{activeBranchId ?? "Organization-wide"}</code>
-                      </dd>
+                      <label
+                        htmlFor="ondar-branch-context"
+                        className="block text-xs text-muted-foreground"
+                      >
+                        Operating Branch
+                      </label>
+                      <select
+                        id="ondar-branch-context"
+                        value={activeBranchId ?? ""}
+                        onChange={(event) => handleBranchChange(event.target.value)}
+                        disabled={!activeOrgId || branchAccess.isLoading || branchAccess.isError}
+                        className="mt-1 w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {organizationWide ? (
+                          <option value="">All branches</option>
+                        ) : (
+                          <option value="" disabled>
+                            {branchOptions.length
+                              ? "Select a branch"
+                              : "No Branch context assigned"}
+                          </option>
+                        )}
+                        {branchOptions.map((branch) => (
+                          <option key={branch.id} value={branch.id}>
+                            {branch.code} · {branch.name}
+                          </option>
+                        ))}
+                      </select>
+                      {branchAccess.isError ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Branch access is temporarily unavailable.
+                        </p>
+                      ) : selectedBranch ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {selectedBranch.name} · {selectedBranch.timezone}
+                        </p>
+                      ) : organizationWide ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Organization-wide read context. Choose a Branch before
+                          creating Branch-attributed work in a multi-Branch organization.
+                        </p>
+                      ) : null}
                     </div>
-                  </dl>
+                  </div>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Context controls what Ask, Search, Attention, and domain
-                    workspaces may request. Authorization remains server-side.
+                    Branch choice is an operating context, not an authorization
+                    credential. The server still enforces membership and scoped IAM.
                   </p>
                   <Link
                     href="/app/settings/business"
@@ -495,8 +579,40 @@ export function AppShell({
               <div>
                 Organization: <code>{shortId(activeOrgId)}</code>
               </div>
-              <div className="mt-1">
-                Branch: <code>{shortId(activeBranchId)}</code>
+              <label
+                htmlFor="ondar-mobile-branch-context"
+                className="mt-2 block text-muted-foreground"
+              >
+                Operating Branch
+              </label>
+              <select
+                id="ondar-mobile-branch-context"
+                value={activeBranchId ?? ""}
+                onChange={(event) => handleBranchChange(event.target.value)}
+                disabled={!activeOrgId || branchAccess.isLoading || branchAccess.isError}
+                className="mt-1 w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+              >
+                {organizationWide ? (
+                  <option value="">All branches</option>
+                ) : (
+                  <option value="" disabled>
+                    {branchOptions.length
+                      ? "Select a branch"
+                      : "No Branch context assigned"}
+                  </option>
+                )}
+                {branchOptions.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.code} · {branch.name}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2 text-muted-foreground">
+                {selectedBranch
+                  ? selectedBranch.name + " · " + selectedBranch.timezone
+                  : organizationWide
+                    ? "Organization-wide"
+                    : "Branch selection required"}
               </div>
             </div>
           ) : null}

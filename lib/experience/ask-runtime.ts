@@ -128,6 +128,43 @@ export function readExperienceScope(): ExperienceScope {
   };
 }
 
+export const EXPERIENCE_SCOPE_EVENT = "ondar:experience-scope-changed";
+
+export function writeExperienceScope(scope: ExperienceScope): ExperienceScope {
+  if (typeof window === "undefined") {
+    return { organizationId: null, branchId: null };
+  }
+
+  const organizationId = isUuid(scope.organizationId)
+    ? scope.organizationId
+    : null;
+  const branchId =
+    organizationId && isUuid(scope.branchId) ? scope.branchId : null;
+
+  if (organizationId) {
+    localStorage.setItem("orgId", organizationId);
+  } else {
+    localStorage.removeItem("orgId");
+  }
+  if (branchId) {
+    localStorage.setItem("branchId", branchId);
+  } else {
+    localStorage.removeItem("branchId");
+  }
+
+  // Remove historical aliases so one browser cannot carry contradictory scope.
+  localStorage.removeItem("organization_id");
+  localStorage.removeItem("branch_id");
+
+  const normalized = { organizationId, branchId };
+  window.dispatchEvent(
+    new CustomEvent<ExperienceScope>(EXPERIENCE_SCOPE_EVENT, {
+      detail: normalized,
+    }),
+  );
+  return normalized;
+}
+
 function conversationStorageKey(organizationId: string): string {
   return `ondar:experience:conversation:${organizationId}`;
 }
