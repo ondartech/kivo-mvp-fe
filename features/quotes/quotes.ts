@@ -39,5 +39,8 @@ export function quoteActionErrorMessage(error: unknown): string {
   if (code === "APPROVAL_REQUIRED") {
     return "This Quote requires approval before it can be sent.";
   }
+  if (code === "CATALOG_CONFIGURATION_NOT_LOCKED") {
+    return "Lock the Quote's commercial configuration before sending it.";
+  }
   return error instanceof Error ? error.message : "The Quote action failed.";
 }
