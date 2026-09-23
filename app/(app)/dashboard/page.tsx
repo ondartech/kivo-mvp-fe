@@ -74,7 +74,8 @@ export default function DashboardPage() {
         title="Dashboard"
         description={
           effectiveBranchId
-            ? "Cash, receivables, commercial pipeline and compliance for the selected operating Branch."
+            ? "Cash, receivables, commercial pipeline and compliance for the selected " +
+              "operating Branch."
             : branchAccess.data?.organization_wide === false
               ? "Choose an authorized Branch to load the business command center."
               : "Organization-wide cash, receivables, commercial pipeline and compliance."
