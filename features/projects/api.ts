@@ -5,7 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/experience/ask-runtime";
-import { buildProjectListParams } from "./branching";
+import {
+  buildProjectDashboardParams,
+  buildProjectListParams,
+} from "./branching";
 
 export type ProjectKind = "INTERNAL" | "COMMERCIAL";
 export type ProjectStatus =
@@ -39,6 +42,107 @@ export type Project = {
 export type ProjectList = {
   data: Project[];
   next_cursor: string | null;
+};
+
+export type ProjectDashboardCustomer = {
+  id: string;
+  name: string;
+};
+
+export type ProjectDashboardMilestone = {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  sequence: number;
+  name: string;
+  description: string | null;
+  completion_status: string;
+  billing_status: string;
+  billing_type: string | null;
+  billing_percentage: string | null;
+  billing_amount: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProjectDashboard = {
+  overview: {
+    project: Project;
+    customer: ProjectDashboardCustomer | null;
+    counts: {
+      quotes: number;
+      invoices: number;
+      milestones_total: number;
+      milestones_completed: number;
+      milestones_pending: number;
+      milestones_ready_to_bill: number;
+      milestones_invoiced: number;
+      milestones_overdue: number;
+      expenses: number;
+    };
+    financials: {
+      currency: string;
+      contract_value: string | null;
+      budget_amount: string | null;
+      quoted_total: string;
+      invoiced_total: string;
+      collected_total: string;
+      outstanding_total: string;
+      overdue_total: string;
+      expenses_total: string;
+    };
+  };
+  quotes: {
+    counts_by_status: Record<string, number>;
+    quoted_total: string;
+    recent: Array<{
+      id: string;
+      quote_number: string;
+      status: string;
+      currency: string;
+      grand_total: string;
+      valid_until: string | null;
+      created_at: string;
+    }>;
+  };
+  milestones: {
+    counts_by_completion: Record<string, number>;
+    counts_by_billing: Record<string, number>;
+    next_due: string | null;
+    items: ProjectDashboardMilestone[];
+    truncated: boolean;
+  };
+  invoices: {
+    counts_by_document_state: Record<string, number>;
+    counts_by_payment_state: Record<string, number>;
+    invoiced_total: string;
+    collected_total: string;
+    outstanding_total: string;
+    recent: Array<{
+      id: string;
+      invoice_number: string | null;
+      document_state: string;
+      payment_state: string;
+      currency: string;
+      grand_total: string;
+      outstanding: string | null;
+      due_date: string;
+      issued_at: string | null;
+    }>;
+  };
+  activity: {
+    items: Array<{
+      id: string;
+      timestamp: string;
+      entity_type: string;
+      entity_id: string | null;
+      action: string;
+      actor_type: string;
+      actor_id: string | null;
+    }>;
+  };
 };
 
 export type ProjectCreateInput = {
@@ -108,6 +212,22 @@ export function useProjects(
     },
     enabled: isUuid(orgId) && (opts.enabled ?? true),
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useProjectDashboard(orgId: string, projectId: string) {
+  return useQuery<ProjectDashboard>({
+    queryKey: ["project-dashboard", orgId, projectId],
+    queryFn: async () => {
+      const params = buildProjectDashboardParams();
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/projects/${projectId}/dashboard?${params.toString()}`,
+        { method: "GET" },
+      );
+      return handleRes<ProjectDashboard>(res);
+    },
+    enabled: isUuid(orgId) && isUuid(projectId),
+    staleTime: 30_000,
   });
 }
 
