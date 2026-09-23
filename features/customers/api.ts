@@ -3,6 +3,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { env } from "@/lib/env";
 import { fetchWithAuth } from "@/lib/api-client";
+import { isUuid } from "@/lib/experience/ask-runtime";
 import type { CustomerCreateInput, CustomerPatchInput } from "./schema";
 
 type Customer = {
@@ -93,6 +94,7 @@ export function useCustomers(
       return handleRes<CustomersRes>(res);
     },
     placeholderData: (prev) => prev,
+    enabled: isUuid(orgId),
   });
 }
 
@@ -103,7 +105,7 @@ export function useCustomer(orgId: string, customerId: string) {
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers/${customerId}`, { method: "GET" });
       return handleRes(res);
     },
-    enabled: !!customerId,
+    enabled: isUuid(orgId) && isUuid(customerId),
   });
 }
 
