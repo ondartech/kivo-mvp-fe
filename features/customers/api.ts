@@ -93,6 +93,7 @@ export function useCustomers(
       return handleRes<CustomersRes>(res);
     },
     placeholderData: (prev) => prev,
+    enabled: Boolean(orgId),
   });
 }
 
