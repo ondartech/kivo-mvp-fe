@@ -685,3 +685,24 @@ Receivables is a Branch-attributed subsidiary-ledger read surface.
   projection accepts a Branch scope; the frontend does not locally filter aggregate
   totals.
 
+## Dashboard Branch command center — FE-BRN-004
+
+The Dashboard consumes the single KIV-BE-201 composed endpoint; it does not assemble
+financial/commercial totals from separate client-side queries.
+
+- `GET /api/v1/organizations/{organization_id}/dashboard` is requested only after
+  operating Branch access resolves.
+- An authorized selected Branch is sent as `branch_id`; Organization-wide access may
+  intentionally omit it for `All branches`.
+- Branch-scoped memberships with multiple active Branches fail closed until the user
+  chooses one. No active Branch produces an explicit access state.
+- The backend response's effective `branch_id` is rendered as the authoritative scope
+  of the command center.
+- Collected cash, Receivables summary/aging, Quote pipeline, Project/ready-milestone
+  commercial metrics and NRS posture come from the same response and therefore cannot
+  mix Branch scopes.
+- The frontend never recalculates cash, outstanding, overdue, unbilled, contract value
+  or NRS totals. Money remains authoritative decimal strings.
+- The Dashboard deliberately does not synthesize recent invoices/payments or local
+  charts. Detail navigation goes to authoritative domain workspaces.
+
