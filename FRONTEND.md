@@ -729,3 +729,26 @@ membership Branch set.
   Journal may span multiple Branches, so the frontend does not request or fabricate a
   partial journal view.
 
+## Project workspace foundation — KIV-FE-121
+
+`/app/projects` and `/app/projects/new` establish the first authenticated Project
+workspace.
+
+- Project lists use the global server-authoritative operating Branch context and send
+  `branch_id` only when a concrete authorized Branch is selected.
+- Organization-wide access may intentionally read All branches; Branch-scoped access
+  with multiple Branches fails closed until a Branch is selected.
+- Creation always persists one concrete ACTIVE Branch. It never silently chooses among
+  multiple Branches.
+- Both `COMMERCIAL` and `INTERNAL` Project kinds are exposed. Commercial Projects
+  require a customer; Internal Projects never send one.
+- Quick-create captures Project identity, Branch, customer where applicable, currency,
+  description and schedule dates.
+- Contract value and budget are deliberately excluded from the quick-create surface.
+  Those economics belong to the richer Project workspace where their source and
+  consequences can be understood.
+- Project list rows render persisted Branch attribution and lifecycle state from the
+  backend. The frontend does not infer Project status or financial position.
+- Full Project detail remains `KIV-FE-190`; KIV-FE-121 does not create a competing
+  detail model.
+
