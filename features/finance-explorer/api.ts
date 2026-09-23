@@ -12,6 +12,7 @@ import {
   journalEntrySchema,
   journalSourceTraceSchema,
 } from "./schema";
+import { buildFinanceActivityParams } from "./branching";
 
 function baseUrl(orgId: string): string {
   return `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/v1/organizations/${orgId}`;
@@ -81,14 +82,31 @@ export function useFinanceAccount(orgId: string, accountId: string) {
   });
 }
 
-export function useAccountActivity(orgId: string, accountId: string) {
+export function useAccountActivity(
+  orgId: string,
+  accountId: string,
+  opts: {
+    branchId?: string | null;
+    enabled?: boolean;
+  } = {},
+) {
   return useInfiniteQuery({
-    queryKey: ["finance", orgId, "accounts", accountId, "activity"],
+    queryKey: [
+      "finance",
+      orgId,
+      "accounts",
+      accountId,
+      "activity",
+      opts.branchId ?? null,
+    ],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       requireOrganizationId(orgId);
-      const params = new URLSearchParams({ limit: "50" });
-      if (pageParam) params.set("cursor", pageParam);
+      const params = buildFinanceActivityParams({
+        branchId: opts.branchId,
+        cursor: pageParam,
+        limit: 50,
+      });
       const response = await fetchWithAuth(
         `${baseUrl(orgId)}/finance/accounts/${accountId}/activity?${params.toString()}`,
         { method: "GET" },
@@ -96,7 +114,10 @@ export function useAccountActivity(orgId: string, accountId: string) {
       return parseResponse(response, (value) => accountActivitySchema.parse(value));
     },
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    enabled: isOrganizationId(orgId) && Boolean(accountId),
+    enabled:
+      isOrganizationId(orgId) &&
+      Boolean(accountId) &&
+      (opts.enabled ?? true),
   });
 }
 

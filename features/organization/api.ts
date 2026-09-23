@@ -70,13 +70,23 @@ async function handleRes<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function useOperatingBranches(orgId: string) {
+export function useOperatingBranches(
+  orgId: string,
+  opts: { permissionCode?: string } = {},
+) {
   return useQuery<OperatingBranchAccess>({
-    queryKey: ["operating-branches", orgId],
+    queryKey: ["operating-branches", orgId, opts.permissionCode ?? null],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${baseUrl(orgId)}/operating-branches`, {
-        method: "GET",
-      });
+      const params = new URLSearchParams();
+      if (opts.permissionCode) {
+        params.set("permission", opts.permissionCode);
+      }
+      const query = params.toString();
+      const suffix = query ? `?${query}` : "";
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/operating-branches${suffix}`,
+        { method: "GET" },
+      );
       return handleRes<OperatingBranchAccess>(res);
     },
     enabled: isUuid(orgId),
