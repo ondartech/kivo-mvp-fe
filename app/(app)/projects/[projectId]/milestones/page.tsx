@@ -141,15 +141,20 @@ export default function ProjectMilestonesPage() {
   const percentageAvailable =
     !isInternal && project.contract_value !== null;
 
+  const fixedNumber = Number(billingAmount);
+  const percentageNumber = Number(billingPercentage);
   const fixedValid =
     billingType !== "FIXED" ||
-    (billingAmount.trim() !== "" && Number(billingAmount) > 0);
+    (billingAmount.trim() !== "" &&
+      Number.isFinite(fixedNumber) &&
+      fixedNumber > 0);
   const percentageValid =
     billingType !== "PERCENTAGE" ||
     (percentageAvailable &&
       billingPercentage.trim() !== "" &&
-      Number(billingPercentage) > 0 &&
-      Number(billingPercentage) <= 1);
+      Number.isFinite(percentageNumber) &&
+      percentageNumber > 0 &&
+      percentageNumber <= 1);
   const canCreate =
     name.trim().length > 0 &&
     fixedValid &&
