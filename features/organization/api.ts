@@ -81,7 +81,8 @@ export function useOperatingBranches(
       if (opts.permissionCode) {
         params.set("permission", opts.permissionCode);
       }
-      const suffix = params.size ? `?${params.toString()}` : "";
+      const query = params.toString();
+      const suffix = query ? `?${query}` : "";
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/operating-branches${suffix}`,
         { method: "GET" },
