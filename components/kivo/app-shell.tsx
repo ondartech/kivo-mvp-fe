@@ -588,8 +588,40 @@ export function AppShell({
               <div>
                 Organization: <code>{shortId(activeOrgId)}</code>
               </div>
-              <div className="mt-1">
-                Branch: <code>{shortId(activeBranchId)}</code>
+              <label
+                htmlFor="ondar-mobile-branch-context"
+                className="mt-2 block text-muted-foreground"
+              >
+                Operating Branch
+              </label>
+              <select
+                id="ondar-mobile-branch-context"
+                value={activeBranchId ?? ""}
+                onChange={(event) => handleBranchChange(event.target.value)}
+                disabled={!activeOrgId || branchAccess.isLoading || branchAccess.isError}
+                className="mt-1 w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+              >
+                {organizationWide ? (
+                  <option value="">All branches</option>
+                ) : (
+                  <option value="" disabled>
+                    {branchOptions.length
+                      ? "Select a branch"
+                      : "No Branch context assigned"}
+                  </option>
+                )}
+                {branchOptions.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.code} · {branch.name}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2 text-muted-foreground">
+                {selectedBranch
+                  ? selectedBranch.name + " · " + selectedBranch.timezone
+                  : organizationWide
+                    ? "Organization-wide"
+                    : "Branch selection required"}
               </div>
             </div>
           ) : null}
