@@ -1,23 +1,68 @@
-import { PageHeader } from "@/components/kivo/page-header";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatMoney } from "@/lib/money";
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
 
-const invoices = [
-  { id: "inv-1042", number: "INV-1042", customer: "Acme Ltd.", amount: "2400000", outstanding: "2400000", due: "4 days overdue", doc: "ISSUED", pay: "UNPAID", col: "OVERDUE" },
-  { id: "inv-1043", number: "INV-1043", customer: "Bello Consulting", amount: "850000", outstanding: "850000", due: "Due tomorrow", doc: "ISSUED", pay: "UNPAID", col: "DUE_SOON" },
-  { id: "inv-1044", number: "INV-1044", customer: "Nova Studio", amount: "450000", outstanding: "0", due: "—", doc: "ISSUED", pay: "PAID", col: "CURRENT" },
-  { id: "inv-1045", number: "—", customer: "Maro Ltd", amount: "320000", outstanding: "320000", due: "Draft", doc: "DRAFT", pay: "UNPAID", col: "CURRENT" },
-];
+import { PageHeader } from "@/components/kivo/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useInvoices } from "@/features/invoices/api";
+import { useOperatingBranches } from "@/features/organization/api";
+import { useActiveBranchId } from "@/hooks/use-active-branch";
+import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { formatMoney } from "@/lib/money";
+
+type DocumentState = "DRAFT" | "ISSUED" | "VOID" | null;
+
+function shortId(value: string) {
+  return value.slice(0, 8);
+}
 
 export default function InvoicesPage() {
+  const orgId = useActiveOrganizationId() ?? "";
+  const branchId = useActiveBranchId();
+  const [documentState, setDocumentState] = useState<DocumentState>(null);
+
+  const invoices = useInvoices(orgId, {
+    branchId,
+    documentState,
+    limit: 50,
+  });
+  const branchAccess = useOperatingBranches(orgId);
+
+  const branchById = useMemo(
+    () =>
+      new Map(
+        (branchAccess.data?.branches ?? []).map((branch) => [branch.id, branch]),
+      ),
+    [branchAccess.data?.branches],
+  );
+  const selectedBranch = branchId ? branchById.get(branchId) : null;
+  const scopeLabel = selectedBranch
+    ? `${selectedBranch.code} · ${selectedBranch.name}`
+    : "All branches";
+
+  const rows = invoices.data?.data ?? [];
+
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow={scopeLabel}
         title="Invoices"
-        description="Customer · Amount · Outstanding · Due · State — sorted by attention."
+        description={
+          branchId
+            ? "Showing invoices attributed to the selected operating Branch."
+            : "Organization-wide invoice view across authorized Branches."
+        }
         actions={
           <Link href="/app/invoices/new">
             <Button>Create invoice</Button>
@@ -25,74 +70,164 @@ export default function InvoicesPage() {
         }
       />
 
-      {/* Filters — practical, not BI */}
-      <div className="flex flex-wrap gap-2 text-sm">
-        <Badge variant="neutral">All</Badge>
-        <Badge variant="critical">Overdue</Badge>
-        <Badge>Draft</Badge>
-        <Badge>Issued</Badge>
-        <Badge variant="success">Paid</Badge>
-        <span className="ml-auto text-xs text-muted-foreground">₦ · NGN · No float · Server totals</span>
-      </div>
-
-      <Table>
-        <TableHeader>
-          <tr>
-            <TableHead>Customer</TableHead>
-            <TableHead>Invoice</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-            <TableHead className="text-right">Outstanding</TableHead>
-            <TableHead>Due</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead></TableHead>
-          </tr>
-        </TableHeader>
-        <TableBody>
-          {invoices.map((inv) => (
-            <TableRow key={inv.id}>
-              <TableCell className="font-medium">{inv.customer}</TableCell>
-              <TableCell className="tabular-nums">{inv.number}</TableCell>
-              <TableCell className="text-right tabular-nums">{formatMoney(inv.amount, "NGN")}</TableCell>
-              <TableCell className="text-right tabular-nums font-medium">{formatMoney(inv.outstanding, "NGN")}</TableCell>
-              <TableCell className="text-xs">{inv.due}</TableCell>
-              <TableCell>
-                <span className="inline-flex gap-1">
-                  <Badge variant={inv.doc === "DRAFT" ? "neutral" : inv.pay === "PAID" ? "success" : "info"}>{inv.doc}</Badge>
-                  <Badge variant={inv.col === "OVERDUE" ? "critical" : inv.col === "DUE_SOON" ? "warning" : "neutral"}>
-                    {inv.pay}
-                  </Badge>
-                </span>
-              </TableCell>
-              <TableCell>
-                <Link href={`/app/invoices/${inv.id}`}>
-                  <Button size="sm" variant="ghost">
-                    Open
-                  </Button>
-                </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      {/* Mobile transformation — stacked */}
-      <div className="md:hidden space-y-3">
-        {invoices.map((inv) => (
-          <div key={inv.id} className="rounded-lg border bg-surface p-4">
-            <div className="flex justify-between">
-              <span className="font-medium">{inv.customer}</span>
-              <span className="tabular-nums font-semibold">{formatMoney(inv.amount, "NGN")}</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {inv.number} · {inv.due}
-            </div>
-            <div className="mt-2 flex gap-2">
-              <Badge>{inv.doc}</Badge>
-              <Badge variant="critical">{inv.pay}</Badge>
-            </div>
-          </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {(
+          [
+            [null, "All"],
+            ["DRAFT", "Draft"],
+            ["ISSUED", "Issued"],
+            ["VOID", "Void"],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={label}
+            size="sm"
+            variant={documentState === value ? "primary" : "secondary"}
+            onClick={() => setDocumentState(value)}
+          >
+            {label}
+          </Button>
         ))}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {scopeLabel}
+        </span>
       </div>
+
+      {invoices.isLoading ? (
+        <Card>
+          <CardContent className="p-5 text-sm text-muted-foreground">
+            Loading invoices…
+          </CardContent>
+        </Card>
+      ) : invoices.isError ? (
+        <Card>
+          <CardContent className="p-5 text-sm">
+            <div className="font-medium">Could not load invoices</div>
+            <div className="mt-1 text-muted-foreground">
+              {invoices.error instanceof Error
+                ? invoices.error.message
+                : "The invoice request failed."}
+            </div>
+          </CardContent>
+        </Card>
+      ) : rows.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            No invoices match this Branch and state.
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <tr>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Branch</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Due</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead />
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {rows.map((invoice) => {
+                  const branch = branchById.get(invoice.branch_id);
+                  return (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium tabular-nums">
+                        {invoice.invoice_number ?? "Draft"}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {shortId(invoice.customer_id)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="neutral">
+                          {branch?.code ?? shortId(invoice.branch_id)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(invoice.grand_total, invoice.currency)}
+                      </TableCell>
+                      <TableCell className="text-xs">{invoice.due_date}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex gap-1">
+                          <Badge
+                            variant={
+                              invoice.document_state === "DRAFT"
+                                ? "neutral"
+                                : invoice.document_state === "VOID"
+                                  ? "critical"
+                                  : "info"
+                            }
+                          >
+                            {invoice.document_state}
+                          </Badge>
+                          <Badge
+                            variant={
+                              invoice.payment_state === "PAID"
+                                ? "success"
+                                : "neutral"
+                            }
+                          >
+                            {invoice.payment_state}
+                          </Badge>
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/app/invoices/${invoice.id}`}>
+                          <Button size="sm" variant="ghost">
+                            Open
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {rows.map((invoice) => {
+              const branch = branchById.get(invoice.branch_id);
+              return (
+                <Link
+                  key={invoice.id}
+                  href={`/app/invoices/${invoice.id}`}
+                  className="block rounded-lg border bg-surface p-4"
+                >
+                  <div className="flex justify-between gap-3">
+                    <div>
+                      <div className="font-medium">
+                        {invoice.invoice_number ?? "Draft invoice"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {branch?.code ?? shortId(invoice.branch_id)} · Due{" "}
+                        {invoice.due_date}
+                      </div>
+                    </div>
+                    <div className="tabular-nums font-semibold">
+                      {formatMoney(invoice.grand_total, invoice.currency)}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <Badge>{invoice.document_state}</Badge>
+                    <Badge
+                      variant={
+                        invoice.payment_state === "PAID" ? "success" : "neutral"
+                      }
+                    >
+                      {invoice.payment_state}
+                    </Badge>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
