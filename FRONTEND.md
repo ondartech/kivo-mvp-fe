@@ -622,3 +622,22 @@ Search, Attention and each commercial/finance workspace must add Branch filterin
 when their backend contract explicitly supports it; FE-BRN-001 does not invent client-side
 filter semantics.
 
+## Invoice Branch operating behavior — FE-BRN-002
+
+Invoice surfaces consume the server-authoritative Branch access introduced by
+FE-BRN-001.
+
+- Invoice lists send `branch_id` only when an authorized active Branch is selected.
+- Organization-wide members may intentionally use `All branches`; Branch-scoped
+  members with multiple Branches must select one before the list request executes.
+- Invoice draft creation always resolves a concrete authorized Branch. A single
+  available Branch may default automatically; multi-Branch creation never silently
+  chooses HQ or another Branch.
+- Stale browser Branch ids fail closed against the current
+  `/operating-branches` response.
+- `branch_id` is sent as commercial lineage, not as an authorization credential.
+- Invoice list/detail/create surfaces render persisted Branch attribution from API
+  data rather than inferred location labels.
+- Money remains decimal-string input/output and the frontend does not calculate
+  invoice totals.
+
