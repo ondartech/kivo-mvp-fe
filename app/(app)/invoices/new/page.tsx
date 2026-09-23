@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useCustomers } from "@/features/customers/api";
 import { useCreateInvoice } from "@/features/invoicing/api";
+import { resolveInvoiceCreateBranchId } from "@/features/invoicing/branch-context";
 import { useOperatingBranches } from "@/features/organization/api";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
@@ -58,21 +59,14 @@ export default function NewInvoicePage() {
   const customerRows = customers.data?.data ?? [];
 
   useEffect(() => {
-    if (!branches.length) {
-      setSelectedBranchId("");
-      return;
+    const nextBranchId = resolveInvoiceCreateBranchId(
+      branches.map((branch) => branch.id),
+      activeBranchId,
+      selectedBranchId || null,
+    );
+    if ((nextBranchId ?? "") !== selectedBranchId) {
+      setSelectedBranchId(nextBranchId ?? "");
     }
-    const allowed = new Set(branches.map((branch) => branch.id));
-    if (selectedBranchId && allowed.has(selectedBranchId)) return;
-    if (activeBranchId && allowed.has(activeBranchId)) {
-      setSelectedBranchId(activeBranchId);
-      return;
-    }
-    if (branches.length === 1) {
-      setSelectedBranchId(branches[0].id);
-      return;
-    }
-    setSelectedBranchId("");
   }, [activeBranchId, branches, selectedBranchId]);
 
   if (!organizationId) {
@@ -87,6 +81,8 @@ export default function NewInvoicePage() {
   const selectedBranch =
     branches.find((branch) => branch.id === selectedBranchId) ?? null;
   const branchRequired = branches.length > 1 && !selectedBranchId;
+  const branchUnavailable =
+    branchAccess.isLoading || branchAccess.isError || branches.length === 0;
   const lineAmount = mode === "quick" ? amount : unitPrice;
 
   const saveDraft = () => {
@@ -134,6 +130,7 @@ export default function NewInvoicePage() {
               !description.trim() ||
               !lineAmount ||
               branchRequired ||
+              branchUnavailable ||
               !issueDate ||
               !dueDate
             }
@@ -336,6 +333,7 @@ export default function NewInvoicePage() {
                   !description.trim() ||
                   !lineAmount ||
                   branchRequired ||
+                  branchUnavailable ||
                   !issueDate ||
                   !dueDate
                 }
