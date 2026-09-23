@@ -208,10 +208,8 @@ export function useCreateInvoice(orgId: string) {
       return handleRes<Invoice>(res);
     },
     onSuccess: async (invoice) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["invoices", orgId] }),
-        queryClient.setQueryData(["invoice", orgId, invoice.id], invoice),
-      ]);
+      queryClient.setQueryData(["invoice", orgId, invoice.id], invoice);
+      await queryClient.invalidateQueries({ queryKey: ["invoices", orgId] });
     },
   });
 }
