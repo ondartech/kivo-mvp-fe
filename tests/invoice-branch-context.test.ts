@@ -27,6 +27,18 @@ describe("FE-BRN-002 invoice Branch context", () => {
     ).toBe("lag");
   });
 
+  it("rejects a stale selected Branch", () => {
+    expect(
+      resolveInvoiceCreateBranchId(
+        {
+          organization_wide: true,
+          branches: [{ id: "hq" }, { id: "lag" }],
+        },
+        "abuja",
+      ),
+    ).toBeNull();
+  });
+
   it("defaults creation only when exactly one Branch exists", () => {
     expect(
       resolveInvoiceCreateBranchId(
