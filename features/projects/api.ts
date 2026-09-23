@@ -49,7 +49,7 @@ export type ProjectDashboardCustomer = {
   name: string;
 };
 
-export type ProjectDashboardMilestone = {
+export type ProjectMilestone = {
   id: string;
   organization_id: string;
   project_id: string;
@@ -111,7 +111,7 @@ export type ProjectDashboard = {
     counts_by_completion: Record<string, number>;
     counts_by_billing: Record<string, number>;
     next_due: string | null;
-    items: ProjectDashboardMilestone[];
+    items: ProjectMilestone[];
     truncated: boolean;
   };
   invoices: {
@@ -143,6 +143,28 @@ export type ProjectDashboard = {
       actor_id: string | null;
     }>;
   };
+};
+
+export type MilestoneBillingType = "FIXED" | "PERCENTAGE";
+
+export type MilestoneCreateInput = {
+  name: string;
+  description?: string | null;
+  billing_type?: MilestoneBillingType | null;
+  billing_percentage?: string | null;
+  billing_amount?: string | null;
+  due_date?: string | null;
+};
+
+export type PreparedMilestoneInvoice = {
+  id: string;
+  organization_id: string;
+  project_id: string | null;
+  milestone_id: string | null;
+  invoice_number: string | null;
+  document_state: string;
+  currency: string;
+  grand_total: string;
 };
 
 export type ProjectCreateInput = {
@@ -228,6 +250,104 @@ export function useProjectDashboard(orgId: string, projectId: string) {
     },
     enabled: isUuid(orgId) && isUuid(projectId),
     staleTime: 30_000,
+  });
+}
+
+export function useProjectMilestones(orgId: string, projectId: string) {
+  return useQuery<ProjectMilestone[]>({
+    queryKey: ["project-milestones", orgId, projectId],
+    queryFn: async () => {
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/projects/${projectId}/milestones`,
+        { method: "GET" },
+      );
+      return handleRes<ProjectMilestone[]>(res);
+    },
+    enabled: isUuid(orgId) && isUuid(projectId),
+  });
+}
+
+export function useCreateMilestone(orgId: string, projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<ProjectMilestone, Error, MilestoneCreateInput>({
+    mutationFn: async (input) => {
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/projects/${projectId}/milestones`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        },
+      );
+      return handleRes<ProjectMilestone>(res);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["project-milestones", orgId, projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-dashboard", orgId, projectId],
+        }),
+      ]);
+    },
+  });
+}
+
+export function useCompleteMilestone(orgId: string, projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<ProjectMilestone, Error, string>({
+    mutationFn: async (milestoneId) => {
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/projects/${projectId}/milestones/${milestoneId}/complete`,
+        { method: "POST" },
+      );
+      return handleRes<ProjectMilestone>(res);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["project-milestones", orgId, projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-dashboard", orgId, projectId],
+        }),
+      ]);
+    },
+  });
+}
+
+export function usePrepareMilestoneInvoice(orgId: string, projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    PreparedMilestoneInvoice,
+    Error,
+    { milestoneId: string; idempotencyKey: string }
+  >({
+    mutationFn: async ({ milestoneId, idempotencyKey }) => {
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/projects/${projectId}/milestones/${milestoneId}/prepare-invoice`,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": idempotencyKey },
+        },
+      );
+      return handleRes<PreparedMilestoneInvoice>(res);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["project-milestones", orgId, projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-dashboard", orgId, projectId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["invoices", orgId] }),
+      ]);
+    },
   });
 }
 
