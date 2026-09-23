@@ -355,8 +355,13 @@ export default function ProjectDetailPage() {
               <TableBody>
                 {data.quotes.recent.map((quote) => (
                   <TableRow key={quote.id}>
-                    <TableCell className="font-medium tabular-nums">
-                      {quote.quote_number}
+                    <TableCell>
+                      <Link
+                        href={`/app/quotes/${quote.id}`}
+                        className="font-medium tabular-nums underline-offset-4 hover:underline"
+                      >
+                        {quote.quote_number}
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <Badge variant={quoteVariant(quote.status)}>

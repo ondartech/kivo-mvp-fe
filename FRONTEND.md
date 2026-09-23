@@ -803,3 +803,36 @@ the live Project domain contract.
 - Project detail remains a bounded preview and links to this workspace for full Milestone
   operations.
 
+## Authenticated Quote workspace — KIV-FE-191
+
+`/app/quotes`, `/app/quotes/new` and `/app/quotes/{quoteId}` implement the
+MVP2 commercial proposal workflow on the live Quote domain.
+
+- Quote lists use server-authoritative operating Branch context. Organization-wide access
+  may intentionally use All branches; Branch-scoped multi-Branch access fails closed until
+  one Branch is selected.
+- Creation always persists one concrete operating Branch and one Customer. An optional
+  Project is offered only from matching COMMERCIAL Projects for the selected
+  Branch/customer pair.
+- Quote archetype is an optional document/commercial-format input; Standard remains valid.
+- Line-item and Quote-level monetary inputs are sent as decimal strings. The frontend never
+  calculates authoritative Quote totals.
+- `POST /quotes/calculate` supplies the optional totals preview. The persisted Quote
+  response remains authoritative at creation.
+- Quote creation saves a DRAFT. Send is a separate governed command and uses a retained
+  Idempotency-Key across retries.
+- Sending freezes the customer-facing proposal snapshot. SENT/ACCEPTED Quotes are
+  historical commercial evidence rather than mutable drafts.
+- ACCEPTED Quotes expose **Create invoice**, which calls the live
+  `POST /quotes/{quote_id}/convert` command. Conversion creates a distinct Invoice DRAFT;
+  the Quote remains historical and is never transformed in place.
+- If the Quote already has `converted_invoice_id`, the primary financial continuation is
+  **Open invoice** rather than another conversion.
+- Approval, CPQ configuration lock, supersession, expiry and Order-owned billing failures
+  remain backend-authoritative and are surfaced as blocked command states.
+- Quote detail renders authoritative line/tax/discount/total values plus bounded lifecycle
+  history. It states explicitly that a Quote is not a Receivable.
+- Project detail Quote evidence links into the authenticated Quote workspace.
+- Direct authenticated Quote reads rely on backend BRN-READ-003 persisted-Branch
+  authorization; browser Branch context is never treated as authority.
+
