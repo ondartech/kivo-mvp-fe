@@ -38,6 +38,7 @@ const domainNav = [
   { label: "Dashboard", href: "/app/dashboard" },
   { label: "Customers", href: "/app/customers" },
   { label: "Projects", href: "/app/projects" },
+  { label: "Quotes", href: "/app/quotes" },
   { label: "Invoices", href: "/app/invoices" },
   { label: "Receivables", href: "/app/receivables" },
   { label: "Payments", href: "/app/payments" },
