@@ -451,7 +451,9 @@ export default function ProjectDetailPage() {
                                 : "neutral"
                           }
                         >
-                          {humanize(milestone.billing_status)}
+                          {milestone.billing_status === "READY"
+                            ? "Ready to bill"
+                            : humanize(milestone.billing_status)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
