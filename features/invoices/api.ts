@@ -122,6 +122,7 @@ export function useInvoices(
     cursor?: string | null;
     limit?: number;
     sort?: string;
+    enabled?: boolean;
   } = {},
 ) {
   const params = buildInvoiceListParams(opts);
@@ -142,7 +143,7 @@ export function useInvoices(
       );
       return handleRes<InvoiceList>(res);
     },
-    enabled: isUuid(orgId),
+    enabled: isUuid(orgId) && (opts.enabled ?? true),
     placeholderData: (previous) => previous,
   });
 }
