@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildProjectDashboardParams,
   buildProjectListParams,
   resolveProjectCreateBranchId,
   resolveProjectReadScope,
@@ -91,6 +92,14 @@ describe("KIV-FE-121 Project Branch behavior", () => {
         null,
       ),
     ).toBe("hq");
+  });
+
+  it("omits a currency override from the one-call Project dashboard", () => {
+    const params = buildProjectDashboardParams();
+
+    expect(params.get("recent")).toBe("5");
+    expect(params.get("activity_limit")).toBe("10");
+    expect(params.has("currency")).toBe(false);
   });
 
   it("builds Project list filters without inventing Branch scope", () => {
