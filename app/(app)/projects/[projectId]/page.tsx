@@ -390,11 +390,18 @@ export default function ProjectDetailPage() {
                 Ready to bill · {data.overview.counts.milestones_ready_to_bill}
               </Badge>
             ) : null}
-            {data.milestones.next_due ? (
-              <span className="ml-auto text-xs text-muted-foreground">
-                Next due: {data.milestones.next_due}
-              </span>
-            ) : null}
+            <div className="ml-auto flex items-center gap-2">
+              {data.milestones.next_due ? (
+                <span className="text-xs text-muted-foreground">
+                  Next due: {data.milestones.next_due}
+                </span>
+              ) : null}
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/app/projects/${project.id}/milestones`}>
+                  Manage milestones
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {data.milestones.items.length === 0 ? (
