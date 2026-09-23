@@ -776,3 +776,30 @@ workspace.
 - Direct Project access relies on backend BRN-READ-002 authorization against the
   Project's persisted Branch; the active browser Branch is not treated as authority.
 
+## Milestone operations — KIV-FE-140
+
+`/app/projects/{projectId}/milestones` is the full operational Milestone workspace for
+the live Project domain contract.
+
+- The current lifecycle is `PENDING → COMPLETED`. The frontend does not invent the
+  older `IN_PROGRESS` state from stale screen documentation.
+- Completing a Milestone records delivery completion only. The server independently
+  derives billing readiness from the saved billing basis.
+- Commercial Milestones may be non-billable, FIXED amount, or PERCENTAGE of authoritative
+  Project contract value. Internal Projects cannot carry billing configuration.
+- The frontend never calculates a PERCENTAGE invoice amount; it sends the ratio and
+  renders authoritative server state.
+- `READY` is presented as **Ready to bill**. It is not an Invoice and completion never
+  auto-creates an Invoice.
+- Invoice preparation is an explicit command for one Milestone:
+  `POST /projects/{project_id}/milestones/{milestone_id}/prepare-invoice`.
+  The returned Invoice is a DRAFT and the UI opens its existing Invoice workspace.
+- The prepare command retains one browser-generated Idempotency-Key across failed retries
+  for the same Milestone and discards it only after successful creation.
+- Server acceptance and Order-billing gates remain authoritative. Pending/rejected
+  customer acceptance and Order-owned billing are surfaced as explicit blocked states.
+- The UI does not expose multi-select or multi-Milestone invoice preparation because the
+  current backend model has one `milestone_id` per Invoice and no bulk preparation API.
+- Project detail remains a bounded preview and links to this workspace for full Milestone
+  operations.
+
