@@ -5,7 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/experience/ask-runtime";
-import { buildProjectListParams } from "./branching";
+import {
+  buildProjectDashboardParams,
+  buildProjectListParams,
+} from "./branching";
 
 export type ProjectKind = "INTERNAL" | "COMMERCIAL";
 export type ProjectStatus =
@@ -216,10 +219,7 @@ export function useProjectDashboard(orgId: string, projectId: string) {
   return useQuery<ProjectDashboard>({
     queryKey: ["project-dashboard", orgId, projectId],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        recent: "5",
-        activity_limit: "10",
-      });
+      const params = buildProjectDashboardParams();
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/projects/${projectId}/dashboard?${params.toString()}`,
         { method: "GET" },
