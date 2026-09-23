@@ -5,9 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useOpenAttentionCount } from "@/features/foundation/api";
+import { useOperatingBranches } from "@/features/organization/api";
 import {
+  EXPERIENCE_SCOPE_EVENT,
   isUuid,
   readExperienceScope,
+  writeExperienceScope,
 } from "@/lib/experience/ask-runtime";
 import {
   isWorkspaceLikeHref,
@@ -136,8 +139,41 @@ export function AppShell({
       setPinnedWork(readPinnedWorkspaces(scope.organizationId));
     };
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(EXPERIENCE_SCOPE_EVENT, handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(EXPERIENCE_SCOPE_EVENT, handleStorage);
+    };
   }, []);
+
+  const branchAccess = useOperatingBranches(activeOrgId ?? "");
+  const branchOptions = branchAccess.data?.branches ?? [];
+  const organizationWide = branchAccess.data?.organization_wide ?? false;
+
+  useEffect(() => {
+    if (!activeOrgId || !branchAccess.data) return;
+
+    const allowed = new Set(branchAccess.data.branches.map((branch) => branch.id));
+    let nextBranchId = activeBranchId;
+
+    if (nextBranchId && !allowed.has(nextBranchId)) {
+      nextBranchId = null;
+    }
+    if (
+      !branchAccess.data.organization_wide &&
+      nextBranchId === null &&
+      branchAccess.data.branches.length === 1
+    ) {
+      nextBranchId = branchAccess.data.branches[0].id;
+    }
+
+    if (nextBranchId !== activeBranchId) {
+      writeExperienceScope({
+        organizationId: activeOrgId,
+        branchId: nextBranchId,
+      });
+    }
+  }, [activeBranchId, activeOrgId, branchAccess.data]);
 
   const attention = useOpenAttentionCount(activeOrgId ?? "");
   const attentionCount = attention.data?.count ?? 0;
