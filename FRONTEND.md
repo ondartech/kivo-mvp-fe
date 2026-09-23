@@ -622,3 +622,25 @@ Search, Attention and each commercial/finance workspace must add Branch filterin
 when their backend contract explicitly supports it; FE-BRN-001 does not invent client-side
 filter semantics.
 
+
+
+## Document numbering settings — FE-NUM-001
+
+`/app/settings/numbering` is the Organization governance surface for numbering scope.
+
+Rules:
+
+- Policies are read from
+  `GET /api/v1/organizations/{organization_id}/numbering-policies`; the frontend
+  does not infer prefixes, widths or effective defaults.
+- Supported families are Invoice, Quote, Order and Supplier Bill.
+- Each family may be Organization-wide or per-Branch.
+- The UI distinguishes inherited/default policy from an explicit saved policy.
+- Reference examples use the server-returned prefix and width; Branch examples add
+  a sample immutable Branch code only for presentation.
+- `PUT /numbering-policies/{document_type}` is the only mutation used by the
+  surface. The backend remains authoritative for Organization-scoped `org:write`.
+- Policy changes apply only to future allocations. Existing references are never
+  presented as mutable or renumberable.
+- Business settings links to this dedicated workspace; numbering controls are not
+  mixed into static business-identity form state.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
@@ -30,6 +30,23 @@ export type OperatingBranch = {
 export type OperatingBranchAccess = {
   organization_wide: boolean;
   branches: OperatingBranch[];
+};
+
+export type NumberingDocumentType =
+  | "INVOICE"
+  | "QUOTE"
+  | "ORDER"
+  | "SUPPLIER_BILL";
+
+export type NumberingScope = "ORGANIZATION" | "BRANCH";
+
+export type NumberingPolicy = {
+  organization_id: string;
+  document_type: NumberingDocumentType;
+  scope: NumberingScope;
+  prefix: string;
+  width: number;
+  explicit: boolean;
 };
 
 function baseUrl(orgId: string) {
@@ -65,5 +82,52 @@ export function useOperatingBranches(orgId: string) {
     enabled: isUuid(orgId),
     staleTime: 60_000,
     retry: 1,
+  });
+}
+
+
+export function useNumberingPolicies(orgId: string) {
+  return useQuery<NumberingPolicy[]>({
+    queryKey: ["numbering-policies", orgId],
+    queryFn: async () => {
+      const res = await fetchWithAuth(`${baseUrl(orgId)}/numbering-policies`, {
+        method: "GET",
+      });
+      return handleRes<NumberingPolicy[]>(res);
+    },
+    enabled: isUuid(orgId),
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+export function useSetNumberingPolicy(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      documentType: NumberingDocumentType;
+      scope: NumberingScope;
+    }) => {
+      if (!isUuid(orgId)) {
+        throw new Error(
+          "Organization context is not available. Select a workspace and try again.",
+        );
+      }
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/numbering-policies/${input.documentType}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scope: input.scope }),
+        },
+      );
+      return handleRes<NumberingPolicy>(res);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["numbering-policies", orgId],
+      });
+    },
   });
 }
