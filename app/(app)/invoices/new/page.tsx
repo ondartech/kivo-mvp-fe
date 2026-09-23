@@ -129,7 +129,18 @@ export default function NewInvoicePage() {
         }
       />
 
-      {branchSelectionRequired ? (
+      {branchAccess.isError ? (
+        <Card>
+          <CardContent className="p-4 text-sm">
+            <div className="font-medium">Could not resolve Branch access</div>
+            <p className="mt-1 text-muted-foreground">
+              {branchAccess.error instanceof Error
+                ? branchAccess.error.message
+                : "The operating Branch request failed."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : branchSelectionRequired ? (
         <Card>
           <CardContent className="p-4 text-sm">
             <div className="font-medium">Choose an operating Branch</div>
