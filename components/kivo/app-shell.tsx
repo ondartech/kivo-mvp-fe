@@ -12,6 +12,7 @@ import {
   readExperienceScope,
   writeExperienceScope,
 } from "@/lib/experience/ask-runtime";
+import { reconcileActiveBranchId } from "@/lib/experience/branch-context";
 import {
   isWorkspaceLikeHref,
   readPinnedWorkspaces,
@@ -153,20 +154,10 @@ export function AppShell({
   useEffect(() => {
     if (!activeOrgId || !branchAccess.data) return;
 
-    const allowed = new Set(branchAccess.data.branches.map((branch) => branch.id));
-    let nextBranchId = activeBranchId;
-
-    if (nextBranchId && !allowed.has(nextBranchId)) {
-      nextBranchId = null;
-    }
-    if (
-      !branchAccess.data.organization_wide &&
-      nextBranchId === null &&
-      branchAccess.data.branches.length === 1
-    ) {
-      nextBranchId = branchAccess.data.branches[0].id;
-    }
-
+    const nextBranchId = reconcileActiveBranchId(
+      branchAccess.data,
+      activeBranchId,
+    );
     if (nextBranchId !== activeBranchId) {
       writeExperienceScope({
         organizationId: activeOrgId,
