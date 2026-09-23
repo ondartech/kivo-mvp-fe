@@ -207,6 +207,7 @@ export default function ProjectsPage() {
                   <TableHead>Branch</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Schedule</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -218,7 +219,12 @@ export default function ProjectsPage() {
                   return (
                     <TableRow key={project.id}>
                       <TableCell>
-                        <div className="font-medium">{project.name}</div>
+                        <Link
+                          href={`/app/projects/${project.id}`}
+                          className="font-medium underline-offset-4 hover:underline"
+                        >
+                          {project.name}
+                        </Link>
                         <div className="text-xs text-muted-foreground tabular-nums">
                           {project.project_number}
                         </div>
@@ -249,6 +255,11 @@ export default function ProjectsPage() {
                         {" → "}
                         {project.target_end_date ?? "No target"}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link href={`/app/projects/${project.id}`}>Open</Link>
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -267,7 +278,12 @@ export default function ProjectsPage() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium">{project.name}</div>
+                        <Link
+                          href={`/app/projects/${project.id}`}
+                          className="font-medium underline-offset-4 hover:underline"
+                        >
+                          {project.name}
+                        </Link>
                         <div className="mt-0.5 text-xs text-muted-foreground">
                           {project.project_number}
                         </div>
