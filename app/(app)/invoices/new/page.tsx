@@ -1,90 +1,288 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { MoneyAmount } from "@/components/kivo/money-amount";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { MoneyAmount } from "@/components/kivo/money-amount";
+import { Input, Label } from "@/components/ui/input";
+import { useCustomers } from "@/features/customers/api";
+import {
+  useCreateInvoice,
+  type InvoiceCreateInput,
+} from "@/features/invoices/api";
+import { resolveInvoiceCreateBranchId } from "@/features/invoices/branching";
+import { useOperatingBranches } from "@/features/organization/api";
+import { useActiveBranchId } from "@/hooks/use-active-branch";
+import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 
-/* Quick + Standard progressive disclosure — server authoritative totals */
+function localDate(offsetDays = 0) {
+  const value = new Date();
+  value.setDate(value.getDate() + offsetDays);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export default function NewInvoicePage() {
+  const router = useRouter();
+  const orgId = useActiveOrganizationId() ?? "";
+  const activeBranchId = useActiveBranchId();
+  const branchAccess = useOperatingBranches(orgId);
+  const customers = useCustomers(orgId, { status: "ACTIVE", limit: 100 });
+  const createInvoice = useCreateInvoice(orgId);
+
   const [mode, setMode] = useState<"quick" | "standard">("quick");
-  const [amount, setAmount] = useState("2400000");
-  const [qty, setQty] = useState("1");
-  const [unit, setUnit] = useState("2400000");
+  const [customerId, setCustomerId] = useState("");
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [issueDate, setIssueDate] = useState(localDate());
+  const [dueDate, setDueDate] = useState(localDate(14));
+
+  const createBranchId = resolveInvoiceCreateBranchId(
+    branchAccess.data,
+    activeBranchId,
+  );
+  const selectedBranch = useMemo(
+    () =>
+      branchAccess.data?.branches.find(
+        (branch) => branch.id === createBranchId,
+      ) ?? null,
+    [branchAccess.data?.branches, createBranchId],
+  );
+
+  const branchSelectionRequired =
+    Boolean(branchAccess.data) &&
+    (branchAccess.data?.branches.length ?? 0) > 1 &&
+    !createBranchId;
+
+  const saveDraft = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!orgId || !customerId || !description.trim() || !dueDate || !issueDate) {
+      return;
+    }
+    if (!createBranchId) return;
+
+    const line =
+      mode === "quick"
+        ? {
+            description: description.trim(),
+            quantity: "1",
+            unit_price: amount,
+            discount_amount: "0",
+            tax_rate: null,
+          }
+        : {
+            description: description.trim(),
+            quantity,
+            unit_price: unitPrice,
+            discount_amount: "0",
+            tax_rate: null,
+          };
+
+    const payload: InvoiceCreateInput = {
+      branch_id: createBranchId,
+      customer_id: customerId,
+      issue_date: issueDate,
+      due_date: dueDate,
+      currency: "NGN",
+      discount_total: "0",
+      charge_total: "0",
+      line_items: [line],
+    };
+
+    const invoice = await createInvoice.mutateAsync(payload);
+    router.push(`/app/invoices/${invoice.id}`);
+  };
+
+  const lineInputAmount = mode === "quick" ? amount : unitPrice;
+  const canSave =
+    Boolean(
+      orgId &&
+        createBranchId &&
+        customerId &&
+        description.trim() &&
+        issueDate &&
+        dueDate &&
+        lineInputAmount,
+    ) && !createInvoice.isPending;
 
   return (
-    <div className="space-y-6 max-w-[960px]">
+    <form onSubmit={saveDraft} className="max-w-[960px] space-y-6">
       <PageHeader
+        eyebrow={
+          selectedBranch
+            ? `${selectedBranch.code} · ${selectedBranch.name}`
+            : "Branch required"
+        }
         title="Create invoice"
-        description="Quick: Customer → Description → Amount → Due. Then Review → Issue (immutable)."
-        actions={<Button variant="secondary">Save draft</Button>}
+        description="The selected operating Branch is persisted on the draft and becomes immutable commercial lineage at issuance."
+        actions={
+          <Button type="submit" disabled={!canSave} loading={createInvoice.isPending}>
+            Save draft
+          </Button>
+        }
       />
 
+      {branchAccess.isError ? (
+        <Card>
+          <CardContent className="p-4 text-sm">
+            <div className="font-medium">Could not resolve Branch access</div>
+            <p className="mt-1 text-muted-foreground">
+              {branchAccess.error instanceof Error
+                ? branchAccess.error.message
+                : "The operating Branch request failed."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : branchSelectionRequired ? (
+        <Card>
+          <CardContent className="p-4 text-sm">
+            <div className="font-medium">Choose an operating Branch</div>
+            <p className="mt-1 text-muted-foreground">
+              You are viewing All branches. Select a Branch from the app context
+              before creating a Branch-attributed invoice.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {createInvoice.isError ? (
+        <Card>
+          <CardContent className="p-4 text-sm">
+            <div className="font-medium">Could not save invoice</div>
+            <p className="mt-1 text-muted-foreground">
+              {createInvoice.error instanceof Error
+                ? createInvoice.error.message
+                : "The invoice request failed."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="flex gap-2">
-        <Button variant={mode === "quick" ? "primary" : "secondary"} size="sm" onClick={() => setMode("quick")}>
+        <Button
+          type="button"
+          variant={mode === "quick" ? "primary" : "secondary"}
+          size="sm"
+          onClick={() => setMode("quick")}
+        >
           Quick
         </Button>
-        <Button variant={mode === "standard" ? "primary" : "secondary"} size="sm" onClick={() => setMode("standard")}>
+        <Button
+          type="button"
+          variant={mode === "standard" ? "primary" : "secondary"}
+          size="sm"
+          onClick={() => setMode("standard")}
+        >
           Standard
         </Button>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
           <Card>
-            <CardContent className="p-5 space-y-4">
+            <CardContent className="space-y-4 p-5">
               <div>
                 <Label htmlFor="customer">Customer</Label>
-                <Input id="customer" placeholder="Acme Ltd." className="mt-1" />
+                <select
+                  id="customer"
+                  value={customerId}
+                  onChange={(event) => setCustomerId(event.target.value)}
+                  className="mt-1 flex h-9 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
+                  disabled={!orgId || customers.isLoading}
+                >
+                  <option value="">Select customer</option>
+                  {(customers.data?.data ?? []).map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="March consulting engagement"
+                  className="mt-1"
+                />
+              </div>
+
               {mode === "quick" ? (
-                <>
-                  <div>
-                    <Label htmlFor="desc">Description</Label>
-                    <Input id="desc" placeholder="March consulting engagement" className="mt-1" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="amount">Amount (NGN)</Label>
-                      <Input id="amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 tabular-nums" />
-                      <p className="text-xs text-muted-foreground mt-1">Decimal string — no float. Server calculates.</p>
-                    </div>
-                    <div>
-                      <Label htmlFor="due">Due date</Label>
-                      <Input id="due" type="date" className="mt-1" />
-                    </div>
-                  </div>
-                </>
+                <div>
+                  <Label htmlFor="amount">Amount (NGN)</Label>
+                  <Input
+                    id="amount"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    placeholder="2400000.00"
+                    className="mt-1 tabular-nums"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Sent as a decimal string. The server calculates financial totals.
+                  </p>
+                </div>
               ) : (
-                <>
-                  <div className="rounded-lg border p-3 space-y-3">
-                    <div className="text-sm font-medium">Line items</div>
-                    <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground">
-                      <span className="col-span-6">Description</span>
-                      <span className="col-span-2">Qty</span>
-                      <span className="col-span-4">Unit price</span>
+                <div className="rounded-lg border p-3">
+                  <div className="mb-3 text-sm font-medium">Line item</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor="quantity">Quantity</Label>
+                      <Input
+                        id="quantity"
+                        inputMode="decimal"
+                        value={quantity}
+                        onChange={(event) => setQuantity(event.target.value)}
+                        className="mt-1 tabular-nums"
+                      />
                     </div>
-                    <div className="grid grid-cols-12 gap-2">
-                      <Input className="col-span-6" placeholder="Consulting" />
-                      <Input className="col-span-2 tabular-nums" value={qty} onChange={(e) => setQty(e.target.value)} />
-                      <Input className="col-span-4 tabular-nums" value={unit} onChange={(e) => setUnit(e.target.value)} />
+                    <div className="col-span-2">
+                      <Label htmlFor="unit-price">Unit price (NGN)</Label>
+                      <Input
+                        id="unit-price"
+                        inputMode="decimal"
+                        value={unitPrice}
+                        onChange={(event) => setUnitPrice(event.target.value)}
+                        placeholder="2400000.00"
+                        className="mt-1 tabular-nums"
+                      />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Issue date</Label>
-                      <Input type="date" className="mt-1" />
-                    </div>
-                    <div>
-                      <Label>Due date</Label>
-                      <Input type="date" className="mt-1" />
-                    </div>
-                  </div>
-                </>
+                </div>
               )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="issue-date">Issue date</Label>
+                  <Input
+                    id="issue-date"
+                    type="date"
+                    value={issueDate}
+                    onChange={(event) => setIssueDate(event.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="due-date">Due date</Label>
+                  <Input
+                    id="due-date"
+                    type="date"
+                    value={dueDate}
+                    onChange={(event) => setDueDate(event.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -92,32 +290,36 @@ export default function NewInvoicePage() {
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Review</div>
-              <div className="mt-3 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="tabular-nums">₦2,000,000.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tax 7.5%</span>
-                  <span className="tabular-nums">₦150,000.00</span>
-                </div>
-                <div className="flex justify-between font-semibold border-t pt-2">
-                  <span>Total</span>
-                  <MoneyAmount amount={amount} emphasis="table" />
-                </div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Operating context
               </div>
-              <p className="text-xs text-muted-foreground mt-3">Server authoritative. Frontend never calculates.</p>
-              <Button className="w-full mt-4">Review invoice</Button>
+              <div className="mt-2 text-sm font-medium">
+                {selectedBranch
+                  ? `${selectedBranch.code} · ${selectedBranch.name}`
+                  : "No Branch selected"}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {selectedBranch?.timezone ?? "Select a Branch in the app shell."}
+              </div>
             </CardContent>
           </Card>
+
           <Card>
-            <CardContent className="p-4 text-xs text-muted-foreground">
-              Nigeria-native: NGN · bank transfer details · WhatsApp share ready. PDF inherits this data.
+            <CardContent className="p-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Line input
+              </div>
+              <div className="mt-2">
+                <MoneyAmount amount={lineInputAmount || "0"} emphasis="table" />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Final subtotal, tax, charges and grand total are authoritative only
+                after the server creates the draft.
+              </p>
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
