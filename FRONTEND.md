@@ -752,3 +752,27 @@ workspace.
 - Full Project detail remains `KIV-FE-190`; KIV-FE-121 does not create a competing
   detail model.
 
+## Project detail workspace — KIV-FE-190
+
+`/app/projects/{projectId}` is a single-call Project workspace backed by
+`GET /api/v1/organizations/{organization_id}/projects/{project_id}/dashboard`.
+
+- One dashboard request supplies Overview, Quotes, Milestones, Invoices and Activity.
+  The frontend does not waterfall separate commercial/financial requests.
+- The request omits `currency`; the backend resolves the Project's persisted currency.
+  Explicit FX conversion is not performed.
+- Overview emphasizes Work → Bill → Collect using authoritative quoted, invoiced,
+  collected, outstanding and overdue values.
+- Quotes remain commercial pipeline evidence and are not presented as Receivables.
+- Milestone completion and billing readiness are separate; READY does not imply an
+  Invoice exists.
+- Invoice rows may link to the existing Invoice detail workspace, but the frontend does
+  not recompute outstanding amounts.
+- Activity is the bounded Project-scoped audit projection returned by KIV-BE-190.
+- Contract value, budget and Expenses are intentionally not exposed on this MVP2
+  workspace even though the backend projection may carry those mature-system fields.
+- There is no Expenses tab. Full milestone operations remain the separate KIV-FE-140
+  card.
+- Direct Project access relies on backend BRN-READ-002 authorization against the
+  Project's persisted Branch; the active browser Branch is not treated as authority.
+
