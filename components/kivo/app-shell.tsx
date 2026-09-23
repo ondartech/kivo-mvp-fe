@@ -182,11 +182,32 @@ export function AppShell({
   const currentWorkspacePinned =
     Boolean(pathname) && pinnedWork.some((item) => item.href === pathname);
 
+  const selectedBranch = useMemo(
+    () => branchOptions.find((branch) => branch.id === activeBranchId) ?? null,
+    [activeBranchId, branchOptions],
+  );
+
   const contextLabel = useMemo(() => {
     if (!activeOrgId) return "No organization";
-    if (!activeBranchId) return "Organization context";
-    return "Org + branch";
-  }, [activeBranchId, activeOrgId]);
+    if (selectedBranch) return selectedBranch.code;
+    if (branchAccess.isLoading) return "Loading branches";
+    if (organizationWide) return "All branches";
+    return branchOptions.length ? "Select branch" : "No branch access";
+  }, [
+    activeOrgId,
+    branchAccess.isLoading,
+    branchOptions.length,
+    organizationWide,
+    selectedBranch,
+  ]);
+
+  const handleBranchChange = (value: string) => {
+    if (!activeOrgId) return;
+    writeExperienceScope({
+      organizationId: activeOrgId,
+      branchId: value || null,
+    });
+  };
 
   const togglePanel = (next: Exclude<Panel, null>) => {
     setPanel((current) => (current === next ? null : next));
