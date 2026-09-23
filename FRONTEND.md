@@ -644,3 +644,28 @@ Rules:
   presented as mutable or renumberable.
 - Business settings links to this dedicated workspace; numbering controls are not
   mixed into static business-identity form state.
+
+
+## Invoice Branch consumption — FE-BRN-002
+
+Invoice surfaces consume canonical Branch context instead of treating Branch as shell-only
+presentation state.
+
+Rules:
+
+- `/app/invoices` passes the active shell Branch as `branch_id` to the Invoice list
+  API. A null shell Branch means Organization-wide list context and omits the filter.
+- Invoice rows display their persisted `invoice.branch_id`; Branch names are resolved
+  from the Organization Branch registry, including inactive historical Branches.
+- `/app/invoices/new` defaults Branch from the active operating context. If no active
+  context exists, exactly one accessible Branch may default automatically; multiple
+  accessible Branches require an explicit form choice.
+- Direct Invoice creation is blocked while Branch access is loading, unavailable or
+  empty. The command sends the chosen `branch_id` to the backend; server lineage and
+  IAM checks remain authoritative.
+- The create surface submits real DRAFT commands and never calculates authoritative
+  totals in the browser. The server-returned Invoice is seeded into the detail cache.
+- `/app/invoices/[invoiceId]` renders the persisted canonical Branch and the server
+  financial totals. Inactive Branches are presented as historical operating context.
+- Branch-scoped numbering remains independent of this card. The Invoice number displayed
+  is the reference already allocated by the backend numbering policy.
