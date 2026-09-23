@@ -86,6 +86,25 @@ export function useOperatingBranches(orgId: string) {
 }
 
 
+export function useBranches(orgId: string, includeInactive = true) {
+  return useQuery<OperatingBranch[]>({
+    queryKey: ["branches", orgId, includeInactive ? "all" : "active"],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (includeInactive) params.set("include_inactive", "true");
+      const suffix = params.size ? `?${params.toString()}` : "";
+      const res = await fetchWithAuth(`${baseUrl(orgId)}/branches${suffix}`, {
+        method: "GET",
+      });
+      return handleRes<OperatingBranch[]>(res);
+    },
+    enabled: isUuid(orgId),
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+
 export function useNumberingPolicies(orgId: string) {
   return useQuery<NumberingPolicy[]>({
     queryKey: ["numbering-policies", orgId],
