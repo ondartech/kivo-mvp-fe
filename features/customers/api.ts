@@ -105,7 +105,7 @@ export function useCustomer(orgId: string, customerId: string) {
       const res = await fetchWithAuth(`${baseUrl(orgId)}/customers/${customerId}`, { method: "GET" });
       return handleRes(res);
     },
-    enabled: !!customerId,
+    enabled: isUuid(orgId) && isUuid(customerId),
   });
 }
 
