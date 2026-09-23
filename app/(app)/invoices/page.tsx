@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCustomers } from "@/features/customers/api";
 import { useInvoices } from "@/features/invoices/api";
 import { useOperatingBranches } from "@/features/organization/api";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
@@ -32,11 +33,6 @@ export default function InvoicesPage() {
   const branchId = useActiveBranchId();
   const [documentState, setDocumentState] = useState<DocumentState>(null);
 
-  const invoices = useInvoices(orgId, {
-    branchId,
-    documentState,
-    limit: 50,
-  });
   const branchAccess = useOperatingBranches(orgId);
 
   const branchById = useMemo(
@@ -47,11 +43,35 @@ export default function InvoicesPage() {
     [branchAccess.data?.branches],
   );
   const selectedBranch = branchId ? branchById.get(branchId) : null;
+  const authorizedBranchId = selectedBranch?.id ?? null;
+  const scopeReady =
+    Boolean(branchAccess.data) &&
+    (Boolean(authorizedBranchId) || branchAccess.data?.organization_wide === true);
+
+  const invoices = useInvoices(orgId, {
+    branchId: authorizedBranchId,
+    documentState,
+    limit: 50,
+    enabled: scopeReady,
+  });
+  const customers = useCustomers(orgId, { limit: 100 });
+  const customerById = useMemo(
+    () =>
+      new Map(
+        (customers.data?.data ?? []).map((customer) => [customer.id, customer]),
+      ),
+    [customers.data?.data],
+  );
+
   const scopeLabel = selectedBranch
     ? `${selectedBranch.code} · ${selectedBranch.name}`
     : "All branches";
 
   const rows = invoices.data?.data ?? [];
+  const branchSelectionRequired =
+    branchAccess.data?.organization_wide === false &&
+    !authorizedBranchId &&
+    (branchAccess.data?.branches.length ?? 0) > 1;
 
   return (
     <div className="space-y-6">
@@ -93,7 +113,17 @@ export default function InvoicesPage() {
         </span>
       </div>
 
-      {invoices.isLoading ? (
+      {branchSelectionRequired ? (
+        <Card>
+          <CardContent className="p-5 text-sm">
+            <div className="font-medium">Choose an operating Branch</div>
+            <p className="mt-1 text-muted-foreground">
+              Your access is Branch-scoped. Select one of your authorized Branches
+              from the app context to load invoices.
+            </p>
+          </CardContent>
+        </Card>
+      ) : branchAccess.isLoading || (scopeReady && invoices.isLoading) ? (
         <Card>
           <CardContent className="p-5 text-sm text-muted-foreground">
             Loading invoices…
@@ -140,7 +170,8 @@ export default function InvoicesPage() {
                         {invoice.invoice_number ?? "Draft"}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {shortId(invoice.customer_id)}
+                        {customerById.get(invoice.customer_id)?.name ??
+                          shortId(invoice.customer_id)}
                       </TableCell>
                       <TableCell>
                         <Badge variant="neutral">
@@ -204,6 +235,9 @@ export default function InvoicesPage() {
                         {invoice.invoice_number ?? "Draft invoice"}
                       </div>
                       <div className="text-xs text-muted-foreground">
+                        {customerById.get(invoice.customer_id)?.name ??
+                          shortId(invoice.customer_id)}
+                        {" · "}
                         {branch?.code ?? shortId(invoice.branch_id)} · Due{" "}
                         {invoice.due_date}
                       </div>
