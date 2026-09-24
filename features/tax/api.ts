@@ -231,7 +231,8 @@ export function useTaxComplianceCalendar(
   if (params?.from) query.set("from", params.from);
   if (params?.to) query.set("to", params.to);
   if (params?.asOf) query.set("as_of", params.asOf);
-  const suffix = query.size ? "?" + query.toString() : "";
+  const queryString = query.toString();
+  const suffix = queryString ? "?" + queryString : "";
 
   return useQuery({
     queryKey: [
