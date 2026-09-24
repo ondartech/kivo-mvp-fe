@@ -18,6 +18,8 @@ export type InvoiceLine = {
   tax_rate: string | null;
   tax_amount: string;
   line_total: string;
+  commercial_item_id: string | null;
+  variant_id: string | null;
   product_service_id: string | null;
   service_id: string | null;
   source_order_id?: string | null;
@@ -207,6 +209,7 @@ export function useCalculateInvoicePreview(orgId: string) {
     },
   });
 }
+
 export function useCreateInvoice(orgId: string) {
   const queryClient = useQueryClient();
   return useMutation<Invoice, Error, InvoiceCreateInput>({
