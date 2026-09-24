@@ -85,6 +85,18 @@ describe("TAX-FE-002 document tax selection", () => {
     expect(attachable.map((entry) => entry.id)).toEqual([VAT_ID]);
   });
 
+  it("flags a Catalog default that cannot be attached to a new document", () => {
+    const archived = code(VAT_ID, "VAT", "ON_DOCUMENT", "ARCHIVED");
+
+    expect(
+      taxSelectionHint({
+        item,
+        direction: "SELL",
+        explicitTaxCodeId: null,
+        codes: [archived],
+      }),
+    ).toContain("not currently attachable");
+  });
   it("explains inheritance until an explicit line override is selected", () => {
     const codes = [
       code(VAT_ID, "VAT", "ON_DOCUMENT"),
