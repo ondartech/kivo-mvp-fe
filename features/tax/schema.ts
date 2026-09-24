@@ -107,6 +107,12 @@ export const taxCodeListSchema = z
   })
   .strict();
 
+export const taxFilingDeadlineRuleSchema = z.enum([
+  "UNSPECIFIED",
+  "DAY_OF_MONTH_AFTER_PERIOD",
+  "MONTHS_AFTER_PERIOD_END",
+]);
+
 export const taxRegistrationSchema = z
   .object({
     id: z.string().uuid(),
@@ -120,25 +126,11 @@ export const taxRegistrationSchema = z
       "ANNUAL",
       "ON_DEMAND",
     ]),
-    filing_deadline_rule: z
-      .enum([
-        "UNSPECIFIED",
-        "DAY_OF_MONTH_AFTER_PERIOD",
-        "MONTHS_AFTER_PERIOD_END",
-      ])
-      .optional()
-      .default("UNSPECIFIED"),
-    filing_due_day: z.number().int().min(1).max(31).nullable().optional().default(null),
-    filing_due_month_offset: z
-      .number()
-      .int()
-      .min(0)
-      .max(24)
-      .nullable()
-      .optional()
-      .default(null),
-    period_end_month: z.number().int().min(1).max(12).optional().default(12),
-    deadline_authority_reference: z.string().nullable().optional().default(null),
+    filing_deadline_rule: taxFilingDeadlineRuleSchema,
+    filing_due_day: z.number().int().min(1).max(31).nullable(),
+    filing_due_month_offset: z.number().int().min(0).max(24).nullable(),
+    period_end_month: z.number().int().min(1).max(12),
+    deadline_authority_reference: z.string().nullable(),
     effective_from: isoDateSchema,
     effective_to: isoDateSchema.nullable(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
@@ -149,6 +141,63 @@ export const taxRegistrationSchema = z
 export const taxRegistrationListSchema = z
   .object({
     data: z.array(taxRegistrationSchema),
+  })
+  .strict();
+
+export const taxComplianceCalendarItemSchema = z
+  .object({
+    registration_id: z.string().uuid(),
+    authority_code: z.string(),
+    registration_type: z.string(),
+    registration_number: z.string().nullable(),
+    remittance_frequency: z.enum(["MONTHLY", "QUARTERLY", "ANNUAL"]),
+    period_start: isoDateSchema,
+    period_end: isoDateSchema,
+    due_date: isoDateSchema,
+    deadline_state: z.enum(["UPCOMING", "DUE_TODAY", "PAST_DUE"]),
+    completion_state: z.literal("UNTRACKED"),
+    filing_deadline_rule: taxFilingDeadlineRuleSchema,
+    deadline_authority_reference: z.string(),
+  })
+  .strict();
+
+export const taxComplianceCalendarGapSchema = z
+  .object({
+    registration_id: z.string().uuid(),
+    authority_code: z.string(),
+    registration_type: z.string(),
+    registration_number: z.string().nullable(),
+    remittance_frequency: z.enum([
+      "MONTHLY",
+      "QUARTERLY",
+      "ANNUAL",
+      "ON_DEMAND",
+    ]),
+    reason: z.enum(["ON_DEMAND", "DEADLINE_RULE_MISSING"]),
+  })
+  .strict();
+
+export const taxComplianceCalendarSchema = z
+  .object({
+    organization_id: z.string().uuid(),
+    from_date: isoDateSchema,
+    to_date: isoDateSchema,
+    as_of_date: isoDateSchema,
+    generated_at: z.string(),
+    item_count: z.number().int().nonnegative(),
+    items: z.array(taxComplianceCalendarItemSchema),
+    gaps: z.array(taxComplianceCalendarGapSchema),
+    coverage: z
+      .object({
+        schedule_coverage: z.enum(["COMPLETE", "INCOMPLETE"]),
+        recurring_registration_count: z.number().int().nonnegative(),
+        scheduled_registration_count: z.number().int().nonnegative(),
+        unscheduled_registration_count: z.number().int().nonnegative(),
+        completion_tracking: z.literal("NOT_IMPLEMENTED"),
+        warning_codes: z.array(z.string()),
+        warnings: z.array(z.string()),
+      })
+      .strict(),
   })
   .strict();
 
@@ -233,6 +282,22 @@ export const taxRegistrationInputSchema = z
       "ANNUAL",
       "ON_DEMAND",
     ]),
+    filing_deadline_rule: taxFilingDeadlineRuleSchema.default("UNSPECIFIED"),
+    filing_due_day: z.number().int().min(1).max(31).nullable().default(null),
+    filing_due_month_offset: z
+      .number()
+      .int()
+      .min(1)
+      .max(24)
+      .nullable()
+      .default(null),
+    period_end_month: z.number().int().min(1).max(12).default(12),
+    deadline_authority_reference: z
+      .string()
+      .trim()
+      .max(500)
+      .nullable()
+      .default(null),
     effective_from: isoDateSchema,
     effective_to: optionalIsoDateSchema,
   })
@@ -248,6 +313,76 @@ export const taxRegistrationInputSchema = z
         message: "End date cannot precede the effective date.",
       });
     }
+
+    if (value.remittance_frequency === "ON_DEMAND") {
+      if (value.filing_deadline_rule !== "UNSPECIFIED") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["filing_deadline_rule"],
+          message: "On-demand registrations do not have recurring deadlines.",
+        });
+      }
+      return;
+    }
+
+    if (value.filing_deadline_rule === "UNSPECIFIED") {
+      if (
+        value.filing_due_day !== null ||
+        value.filing_due_month_offset !== null ||
+        value.deadline_authority_reference !== null
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["filing_deadline_rule"],
+          message: "Choose a deadline rule before entering deadline parameters.",
+        });
+      }
+      return;
+    }
+
+    if (!value.deadline_authority_reference) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["deadline_authority_reference"],
+        message: "Record the statutory or policy authority for this deadline.",
+      });
+    }
+
+    if (value.filing_deadline_rule === "DAY_OF_MONTH_AFTER_PERIOD") {
+      if (value.filing_due_day === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["filing_due_day"],
+          message: "Enter the filing day of month.",
+        });
+      }
+      if (value.filing_due_month_offset === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["filing_due_month_offset"],
+          message: "Enter the month offset after the tax period.",
+        });
+      }
+      return;
+    }
+
+    if (value.filing_due_day !== null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["filing_due_day"],
+        message: "Months-after-period rules preserve the period-end day.",
+      });
+    }
+    if (
+      value.filing_due_month_offset === null ||
+      value.filing_due_month_offset < 1
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["filing_due_month_offset"],
+        message: "Enter at least one month after the tax period.",
+      });
+    }
   });
 
 export type TaxFamily = z.infer<typeof taxFamilySchema>;
@@ -259,6 +394,8 @@ export type TaxCodeDetail = z.infer<typeof taxCodeDetailSchema>;
 export type TaxCodeVersion = z.infer<typeof taxCodeVersionSchema>;
 export type TaxAccountMapping = z.infer<typeof taxAccountMappingSchema>;
 export type TaxRegistration = z.infer<typeof taxRegistrationSchema>;
+export type TaxComplianceCalendar = z.infer<typeof taxComplianceCalendarSchema>;
+export type TaxFilingDeadlineRule = z.infer<typeof taxFilingDeadlineRuleSchema>;
 export type TaxCodeCreateInput = z.infer<typeof taxCodeCreateInputSchema>;
 export type TaxCodeVersionInput = z.infer<typeof taxCodeVersionInputSchema>;
 export type TaxAccountMappingInput = z.infer<
