@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { useCatalogItems } from "@/features/catalog/api";
 import { useCustomers } from "@/features/customers/api";
 import { useOperatingBranches } from "@/features/organization/api";
 import { useProjects } from "@/features/projects/api";
@@ -22,6 +23,12 @@ import {
   useCreateQuote,
 } from "@/features/quotes/api";
 import { resolveQuoteCreateBranchId } from "@/features/quotes/branching";
+import {
+  documentAttachableTaxCodes,
+  findTaxCode,
+  taxSelectionHint,
+} from "@/features/tax/document";
+import { useTaxCodes } from "@/features/tax/api";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 import { formatMoney } from "@/lib/money";
@@ -35,7 +42,9 @@ function emptyLine(key: number): DraftLine {
     quantity: "1",
     unit_price: "",
     discount_amount: "0",
+    tax_code_id: null,
     tax_rate: null,
+    commercial_item_id: null,
   };
 }
 
@@ -62,6 +71,12 @@ export default function NewQuotePage() {
     limit: 100,
     sort: "normalized_name:asc",
   });
+  const catalogItems = useCatalogItems(orgId, { direction: "SELL" });
+  const taxCodes = useTaxCodes(orgId);
+  const attachableTaxCodes = useMemo(
+    () => documentAttachableTaxCodes(taxCodes.data?.data ?? []),
+    [taxCodes.data?.data],
+  );
 
   const resolvedBranchId = resolveQuoteCreateBranchId(
     branchAccess.data,
@@ -128,6 +143,28 @@ export default function NewQuotePage() {
     preview.reset();
   };
 
+  const selectCatalogItem = (key: number, itemId: string) => {
+    const item = (catalogItems.data?.data ?? []).find(
+      (candidate) => candidate.id === itemId,
+    );
+    setLines((current) =>
+      current.map((line) =>
+        line.key === key
+          ? {
+              ...line,
+              commercial_item_id: itemId || null,
+              description:
+                line.description.trim() ||
+                item?.description?.trim() ||
+                item?.name ||
+                "",
+            }
+          : line,
+      ),
+    );
+    preview.reset();
+  };
+
   const addLine = () => {
     const key = nextLineKey.current++;
     setLines((current) => [...current, emptyLine(key)]);
@@ -146,7 +183,10 @@ export default function NewQuotePage() {
     quantity: line.quantity.trim(),
     unit_price: line.unit_price.trim(),
     discount_amount: line.discount_amount?.trim() || "0",
-    tax_rate: line.tax_rate?.trim() || null,
+    tax_code_id: line.tax_code_id || null,
+    tax_rate: null,
+    commercial_item_id: line.commercial_item_id || null,
+    variant_id: line.variant_id || null,
   }));
 
   const linesValid = sanitizedLines.every(
@@ -154,9 +194,7 @@ export default function NewQuotePage() {
       line.description.length > 0 &&
       validDecimal(line.quantity, { positive: true }) &&
       validDecimal(line.unit_price) &&
-      validDecimal(line.discount_amount ?? "0") &&
-      (line.tax_rate === null ||
-        validDecimal(line.tax_rate, { max: 1 })),
+      validDecimal(line.discount_amount ?? "0"),
   );
   const currencyValid = /^[A-Z]{3}$/.test(currency.trim().toUpperCase());
   const adjustmentsValid =
@@ -458,6 +496,29 @@ export default function NewQuotePage() {
                     </div>
                     <div className="grid gap-3 md:grid-cols-12">
                       <div className="md:col-span-12">
+                        <Label>Catalog item · optional</Label>
+                        <select
+                          value={line.commercial_item_id ?? ""}
+                          onChange={(event) =>
+                            selectCatalogItem(line.key, event.target.value)
+                          }
+                          disabled={catalogItems.isLoading}
+                          className="mt-1 w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                        >
+                          <option value="">
+                            {catalogItems.isLoading
+                              ? "Loading Catalog…"
+                              : "Free-text line"}
+                          </option>
+                          {(catalogItems.data?.data ?? []).map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.code ? item.code + " · " : ""}
+                              {item.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-12">
                         <Label>Description *</Label>
                         <Input
                           value={line.description}
@@ -508,26 +569,68 @@ export default function NewQuotePage() {
                         />
                       </div>
                       <div className="md:col-span-3">
-                        <Label>Tax rate</Label>
-                        <Input
-                          inputMode="decimal"
-                          value={line.tax_rate ?? ""}
+                        <Label>TaxCode</Label>
+                        <select
+                          value={line.tax_code_id ?? ""}
                           onChange={(event) =>
-                            updateLine(line.key, "tax_rate", event.target.value)
+                            updateLine(
+                              line.key,
+                              "tax_code_id",
+                              event.target.value || null,
+                            )
                           }
-                          placeholder="0–1"
-                          className="mt-1"
-                        />
+                          disabled={taxCodes.isLoading}
+                          className="mt-1 w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                        >
+                          <option value="">
+                            {line.commercial_item_id
+                              ? "Use Catalog default"
+                              : "No tax"}
+                          </option>
+                          {attachableTaxCodes.map((code) => (
+                            <option key={code.id} value={code.id}>
+                              {code.code} · {code.name} · {code.current_version?.rate}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {taxSelectionHint({
+                        item:
+                          (catalogItems.data?.data ?? []).find(
+                            (item) => item.id === line.commercial_item_id,
+                          ) ?? null,
+                        direction: "SELL",
+                        explicitTaxCodeId: line.tax_code_id,
+                        codes: taxCodes.data?.data ?? [],
+                      })}
+                    </p>
+                    {preview.data?.line_totals[index] ? (
+                      <div className="mt-2 rounded-md bg-neutral-50 px-3 py-2 text-xs">
+                        Server resolved tax:{" "}
+                        {findTaxCode(
+                          taxCodes.data?.data ?? [],
+                          preview.data.line_totals[index].tax_code_id,
+                        )?.code ?? "None"}
+                        {" · rate "}
+                        {preview.data.line_totals[index].tax_rate ?? "—"}
+                        {" · amount "}
+                        {formatMoney(
+                          preview.data.line_totals[index].tax_amount,
+                          currency,
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
 
               {!linesValid ? (
                 <p className="text-xs text-muted-foreground">
-                  Every line needs a description, quantity greater than zero, a
-                  non-negative unit price/discount, and tax rate between 0 and 1.
+                  Every line needs a description, quantity greater than zero, and
+                  non-negative unit price/discount values. Tax is selected by
+                  TaxCode and resolved by the server.
                 </p>
               ) : null}
             </CardContent>

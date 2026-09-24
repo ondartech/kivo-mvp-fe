@@ -8,13 +8,21 @@ import { PageHeader } from "@/components/kivo/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { useCatalogItems } from "@/features/catalog/api";
 import { useCustomers } from "@/features/customers/api";
 import {
+  useCalculateInvoicePreview,
   useCreateInvoice,
   type InvoiceCreateInput,
 } from "@/features/invoices/api";
 import { resolveInvoiceCreateBranchId } from "@/features/invoices/branching";
 import { useOperatingBranches } from "@/features/organization/api";
+import { useTaxCodes } from "@/features/tax/api";
+import {
+  documentAttachableTaxCodes,
+  findTaxCode,
+  taxSelectionHint,
+} from "@/features/tax/document";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 
@@ -33,10 +41,19 @@ export default function NewInvoicePage() {
   const activeBranchId = useActiveBranchId();
   const branchAccess = useOperatingBranches(orgId);
   const customers = useCustomers(orgId, { status: "ACTIVE", limit: 100 });
+  const catalogItems = useCatalogItems(orgId, { direction: "SELL" });
+  const taxCodes = useTaxCodes(orgId);
+  const attachableTaxCodes = useMemo(
+    () => documentAttachableTaxCodes(taxCodes.data?.data ?? []),
+    [taxCodes.data?.data],
+  );
+  const preview = useCalculateInvoicePreview(orgId);
   const createInvoice = useCreateInvoice(orgId);
 
   const [mode, setMode] = useState<"quick" | "standard">("quick");
   const [customerId, setCustomerId] = useState("");
+  const [commercialItemId, setCommercialItemId] = useState("");
+  const [taxCodeId, setTaxCodeId] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -56,10 +73,43 @@ export default function NewInvoicePage() {
     [branchAccess.data?.branches, createBranchId],
   );
 
+  const selectedCatalogItem = useMemo(
+    () =>
+      (catalogItems.data?.data ?? []).find(
+        (item) => item.id === commercialItemId,
+      ) ?? null,
+    [catalogItems.data?.data, commercialItemId],
+  );
+
   const branchSelectionRequired =
     Boolean(branchAccess.data) &&
     (branchAccess.data?.branches.length ?? 0) > 1 &&
     !createBranchId;
+
+  const currentLine = (): InvoiceCreateInput["line_items"][number] => ({
+    description: description.trim(),
+    quantity: mode === "quick" ? "1" : quantity,
+    unit_price: mode === "quick" ? amount : unitPrice,
+    discount_amount: "0",
+    commercial_item_id: commercialItemId || null,
+    tax_code_id: taxCodeId || null,
+    tax_rate: null,
+  });
+
+  const previewTotals = async () => {
+    if (!description.trim() || !issueDate || !lineInputAmount) return;
+    try {
+      await preview.mutateAsync({
+        line_items: [currentLine()],
+        issue_date: issueDate,
+        discount_total: "0",
+        charge_total: "0",
+        currency: "NGN",
+      });
+    } catch {
+      // React Query retains the authoritative API error for inline display.
+    }
+  };
 
   const saveDraft = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -68,22 +118,7 @@ export default function NewInvoicePage() {
     }
     if (!createBranchId) return;
 
-    const line =
-      mode === "quick"
-        ? {
-            description: description.trim(),
-            quantity: "1",
-            unit_price: amount,
-            discount_amount: "0",
-            tax_rate: null,
-          }
-        : {
-            description: description.trim(),
-            quantity,
-            unit_price: unitPrice,
-            discount_amount: "0",
-            tax_rate: null,
-          };
+    const line = currentLine();
 
     const payload: InvoiceCreateInput = {
       branch_id: createBranchId,
@@ -170,7 +205,10 @@ export default function NewInvoicePage() {
           type="button"
           variant={mode === "quick" ? "primary" : "secondary"}
           size="sm"
-          onClick={() => setMode("quick")}
+          onClick={() => {
+            setMode("quick");
+            preview.reset();
+          }}
         >
           Quick
         </Button>
@@ -178,7 +216,10 @@ export default function NewInvoicePage() {
           type="button"
           variant={mode === "standard" ? "primary" : "secondary"}
           size="sm"
-          onClick={() => setMode("standard")}
+          onClick={() => {
+            setMode("standard");
+            preview.reset();
+          }}
         >
           Standard
         </Button>
@@ -207,6 +248,37 @@ export default function NewInvoicePage() {
               </div>
 
               <div>
+                <Label htmlFor="catalog-item">Catalog item · optional</Label>
+                <select
+                  id="catalog-item"
+                  value={commercialItemId}
+                  onChange={(event) => {
+                    const nextId = event.target.value;
+                    const item = (catalogItems.data?.data ?? []).find(
+                      (candidate) => candidate.id === nextId,
+                    );
+                    setCommercialItemId(nextId);
+                    if (!description.trim() && item) {
+                      setDescription(item.description?.trim() || item.name);
+                    }
+                    preview.reset();
+                  }}
+                  className="mt-1 flex h-9 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
+                  disabled={catalogItems.isLoading}
+                >
+                  <option value="">
+                    {catalogItems.isLoading ? "Loading Catalog…" : "Free-text line"}
+                  </option>
+                  {(catalogItems.data?.data ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.code ? item.code + " · " : ""}
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <Label htmlFor="description">Description</Label>
                 <Input
                   id="description"
@@ -224,7 +296,10 @@ export default function NewInvoicePage() {
                     id="amount"
                     inputMode="decimal"
                     value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
+                    onChange={(event) => {
+                      setAmount(event.target.value);
+                      preview.reset();
+                    }}
                     placeholder="2400000.00"
                     className="mt-1 tabular-nums"
                   />
@@ -242,7 +317,10 @@ export default function NewInvoicePage() {
                         id="quantity"
                         inputMode="decimal"
                         value={quantity}
-                        onChange={(event) => setQuantity(event.target.value)}
+                        onChange={(event) => {
+                          setQuantity(event.target.value);
+                          preview.reset();
+                        }}
                         className="mt-1 tabular-nums"
                       />
                     </div>
@@ -252,7 +330,10 @@ export default function NewInvoicePage() {
                         id="unit-price"
                         inputMode="decimal"
                         value={unitPrice}
-                        onChange={(event) => setUnitPrice(event.target.value)}
+                        onChange={(event) => {
+                          setUnitPrice(event.target.value);
+                          preview.reset();
+                        }}
                         placeholder="2400000.00"
                         className="mt-1 tabular-nums"
                       />
@@ -261,6 +342,37 @@ export default function NewInvoicePage() {
                 </div>
               )}
 
+              <div>
+                <Label htmlFor="invoice-tax-code">TaxCode</Label>
+                <select
+                  id="invoice-tax-code"
+                  value={taxCodeId}
+                  onChange={(event) => {
+                    setTaxCodeId(event.target.value);
+                    preview.reset();
+                  }}
+                  className="mt-1 flex h-9 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
+                  disabled={taxCodes.isLoading}
+                >
+                  <option value="">
+                    {commercialItemId ? "Use Catalog default" : "No tax"}
+                  </option>
+                  {attachableTaxCodes.map((code) => (
+                    <option key={code.id} value={code.id}>
+                      {code.code} · {code.name} · {code.current_version?.rate}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {taxSelectionHint({
+                    item: selectedCatalogItem,
+                    direction: "SELL",
+                    explicitTaxCodeId: taxCodeId || null,
+                    codes: taxCodes.data?.data ?? [],
+                  })}
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="issue-date">Issue date</Label>
@@ -268,7 +380,10 @@ export default function NewInvoicePage() {
                     id="issue-date"
                     type="date"
                     value={issueDate}
-                    onChange={(event) => setIssueDate(event.target.value)}
+                    onChange={(event) => {
+                      setIssueDate(event.target.value);
+                      preview.reset();
+                    }}
                     className="mt-1"
                   />
                 </div>
@@ -305,17 +420,81 @@ export default function NewInvoicePage() {
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Line input
+            <CardContent className="space-y-3 p-4">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Authoritative totals
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Calculated by the Invoice service. Browser arithmetic is not
+                  financial authority.
+                </p>
               </div>
-              <div className="mt-2">
-                <MoneyAmount amount={lineInputAmount || "0"} emphasis="table" />
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Final subtotal, tax, charges and grand total are authoritative only
-                after the server creates the draft.
-              </p>
+
+              {preview.data ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <MoneyAmount
+                      amount={preview.data.subtotal}
+                      currency="NGN"
+                      emphasis="table"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Tax</span>
+                    <MoneyAmount
+                      amount={preview.data.tax_total}
+                      currency="NGN"
+                      emphasis="table"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 border-t pt-2 font-medium">
+                    <span>Total</span>
+                    <MoneyAmount
+                      amount={preview.data.grand_total}
+                      currency="NGN"
+                      emphasis="table"
+                    />
+                  </div>
+                  <div className="rounded-md bg-neutral-50 px-3 py-2 text-xs">
+                    Server resolved tax:{" "}
+                    {findTaxCode(
+                      taxCodes.data?.data ?? [],
+                      preview.data.line_totals[0]?.tax_code_id,
+                    )?.code ?? "None"}
+                    {" · rate "}
+                    {preview.data.line_totals[0]?.tax_rate ?? "—"}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <MoneyAmount
+                    amount={lineInputAmount || "0"}
+                    currency="NGN"
+                    emphasis="table"
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Preview to resolve Catalog inheritance, TaxCodeVersion, tax
+                    amount, and final total.
+                  </p>
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={!lineInputAmount || !description.trim() || preview.isPending}
+                loading={preview.isPending}
+                onClick={() => void previewTotals()}
+              >
+                Preview server totals
+              </Button>
+
+              {preview.isError ? (
+                <p className="text-xs text-critical">{preview.error.message}</p>
+              ) : null}
             </CardContent>
           </Card>
         </div>
