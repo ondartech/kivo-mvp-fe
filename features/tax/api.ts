@@ -13,6 +13,7 @@ import {
   taxCodeListSchema,
   taxCodeVersionInputSchema,
   taxCodeVersionSchema,
+  taxComplianceCalendarSchema,
   taxRegistrationInputSchema,
   taxRegistrationListSchema,
   taxRegistrationSchema,
@@ -218,6 +219,46 @@ export function useArchiveTaxCode(orgId: string, taxCodeId: string | null) {
   });
 }
 
+export function useTaxComplianceCalendar(
+  orgId: string,
+  params?: {
+    from?: string;
+    to?: string;
+    asOf?: string;
+  },
+) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.asOf) query.set("as_of", params.asOf);
+  const suffix = query.size ? "?" + query.toString() : "";
+
+  return useQuery({
+    queryKey: [
+      "tax",
+      orgId,
+      "compliance-calendar",
+      params?.from ?? null,
+      params?.to ?? null,
+      params?.asOf ?? null,
+    ],
+    queryFn: async () => {
+      requireOrganizationId(orgId);
+      const response = await fetchWithAuth(
+        baseUrl(orgId) + "/compliance-calendar" + suffix,
+        { method: "GET" },
+      );
+      return parseResponse(response, (value) =>
+        taxComplianceCalendarSchema.parse(value),
+      );
+    },
+    enabled: isOrganizationId(orgId),
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+
 export function useTaxRegistrations(orgId: string) {
   return useQuery({
     queryKey: ["tax", orgId, "registrations"],
@@ -257,9 +298,14 @@ export function useCreateTaxRegistration(orgId: string) {
       );
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["tax", orgId, "registrations"],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["tax", orgId, "registrations"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["tax", orgId, "compliance-calendar"],
+        }),
+      ]);
     },
   });
 }
