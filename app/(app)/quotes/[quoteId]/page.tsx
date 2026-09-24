@@ -28,6 +28,8 @@ import {
   useQuoteHistory,
   useSendQuote,
 } from "@/features/quotes/api";
+import { useTaxCodes } from "@/features/tax/api";
+import { findTaxCode } from "@/features/tax/document";
 import {
   canConvertQuote,
   canSendQuote,
@@ -66,6 +68,7 @@ export default function QuoteDetailPage() {
   const quote = useQuote(orgId, quoteId);
   const history = useQuoteHistory(orgId, quoteId);
   const branchAccess = useOperatingBranches(orgId);
+  const taxCodes = useTaxCodes(orgId);
 
   const customer = useCustomer(orgId, quote.data?.customer_id ?? "");
   const projects = useProjects(orgId, {
@@ -289,7 +292,7 @@ export default function QuoteDetailPage() {
               <TableHead className="text-right">Qty</TableHead>
               <TableHead className="text-right">Unit price</TableHead>
               <TableHead className="text-right">Discount</TableHead>
-              <TableHead className="text-right">Tax</TableHead>
+              <TableHead className="text-right">Tax authority / amount</TableHead>
               <TableHead className="text-right">Line total</TableHead>
             </TableRow>
           </TableHeader>
@@ -316,8 +319,17 @@ export default function QuoteDetailPage() {
                 <TableCell className="text-right tabular-nums">
                   {formatMoney(line.discount_amount, record.currency)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatMoney(line.tax_amount, record.currency)}
+                <TableCell className="text-right">
+                  <div className="font-medium tabular-nums">
+                    {formatMoney(line.tax_amount, record.currency)}
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {findTaxCode(
+                      taxCodes.data?.data ?? [],
+                      line.tax_code_id,
+                    )?.code ?? "No TaxCode"}
+                    {line.tax_rate ? " · " + line.tax_rate : ""}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatMoney(line.line_total, record.currency)}
