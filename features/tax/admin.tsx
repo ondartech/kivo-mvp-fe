@@ -37,6 +37,7 @@ import {
   type TaxCodeCreateInput,
   type TaxCodeVersionInput,
   type TaxFamily,
+  type TaxFilingDeadlineRule,
   type TaxRegistrationInput,
   type TaxAccountMappingInput,
 } from "./schema";
@@ -866,10 +867,18 @@ function TaxRegistrationsPanel({ organizationId }: { organizationId: string }) {
       registration_type: "",
       registration_number: null,
       remittance_frequency: "MONTHLY",
+      filing_deadline_rule: "UNSPECIFIED",
+      filing_due_day: null,
+      filing_due_month_offset: null,
+      period_end_month: 12,
+      deadline_authority_reference: null,
       effective_from: "",
       effective_to: null,
     },
   });
+
+  const remittanceFrequency = form.watch("remittance_frequency");
+  const deadlineRule = form.watch("filing_deadline_rule");
 
   const submit = form.handleSubmit(async (values) => {
     try {
@@ -881,6 +890,11 @@ function TaxRegistrationsPanel({ organizationId }: { organizationId: string }) {
         registration_type: "",
         registration_number: null,
         remittance_frequency: "MONTHLY",
+        filing_deadline_rule: "UNSPECIFIED",
+        filing_due_day: null,
+        filing_due_month_offset: null,
+        period_end_month: 12,
+        deadline_authority_reference: null,
         effective_from: "",
         effective_to: null,
       });
