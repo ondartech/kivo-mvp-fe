@@ -6,6 +6,7 @@ import {
   taxCodeCreateInputSchema,
   taxCodeDetailSchema,
   taxRegistrationInputSchema,
+  taxRegistrationSchema,
   taxRolesForFamily,
 } from "../features/tax/schema";
 
@@ -125,6 +126,36 @@ describe("tax administration contracts", () => {
     );
     expect(financeAccountClassForTaxRole("INPUT_TAX")).toBe("ASSET");
     expect(financeAccountClassForTaxRole("OUTPUT_TAX")).toBe("LIABILITY");
+  });
+
+  it("accepts both pre-calendar and calendar registration response shapes", () => {
+    const base = {
+      id: "44444444-4444-4444-8444-444444444444",
+      organization_id: ORGANIZATION_ID,
+      authority_code: "NRS",
+      registration_type: "VAT",
+      registration_number: null,
+      remittance_frequency: "MONTHLY" as const,
+      effective_from: "2026-01-01",
+      effective_to: null,
+      status: "ACTIVE" as const,
+      created_at: "2026-09-24T00:00:00Z",
+    };
+
+    const legacy = taxRegistrationSchema.parse(base);
+    expect(legacy.filing_deadline_rule).toBe("UNSPECIFIED");
+    expect(legacy.filing_due_day).toBeNull();
+    expect(legacy.period_end_month).toBe(12);
+
+    const calendar = taxRegistrationSchema.parse({
+      ...base,
+      filing_deadline_rule: "DAY_OF_MONTH_AFTER_PERIOD",
+      filing_due_day: 21,
+      filing_due_month_offset: 1,
+      period_end_month: 12,
+      deadline_authority_reference: "Nigeria Tax Administration Act 2025",
+    });
+    expect(calendar.filing_due_day).toBe(21);
   });
 
   it("rejects invalid registration effective ranges", () => {
