@@ -14,6 +14,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFinanceAccounts } from "@/features/finance-explorer/api";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { CatalogTaxDefaults } from "./catalog-defaults";
 import {
   useAddTaxCodeVersion,
   useArchiveTaxCode,
@@ -1216,6 +1217,8 @@ export function TaxAdministration() {
           />
         </section>
       ) : null}
+
+      <CatalogTaxDefaults organizationId={organizationId} />
 
       <TaxRegistrationsPanel organizationId={organizationId} />
     </div>
