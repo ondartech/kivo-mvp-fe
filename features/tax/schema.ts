@@ -120,6 +120,25 @@ export const taxRegistrationSchema = z
       "ANNUAL",
       "ON_DEMAND",
     ]),
+    filing_deadline_rule: z
+      .enum([
+        "UNSPECIFIED",
+        "DAY_OF_MONTH_AFTER_PERIOD",
+        "MONTHS_AFTER_PERIOD_END",
+      ])
+      .optional()
+      .default("UNSPECIFIED"),
+    filing_due_day: z.number().int().min(1).max(31).nullable().optional().default(null),
+    filing_due_month_offset: z
+      .number()
+      .int()
+      .min(0)
+      .max(24)
+      .nullable()
+      .optional()
+      .default(null),
+    period_end_month: z.number().int().min(1).max(12).optional().default(12),
+    deadline_authority_reference: z.string().nullable().optional().default(null),
     effective_from: isoDateSchema,
     effective_to: isoDateSchema.nullable(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
