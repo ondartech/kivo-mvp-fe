@@ -5,6 +5,7 @@ import {
   financeAccountClassForTaxRole,
   taxCodeCreateInputSchema,
   taxCodeDetailSchema,
+  taxComplianceCalendarSchema,
   taxRegistrationInputSchema,
   taxRegistrationSchema,
   taxRolesForFamily,
@@ -128,34 +129,125 @@ describe("tax administration contracts", () => {
     expect(financeAccountClassForTaxRole("OUTPUT_TAX")).toBe("LIABILITY");
   });
 
-  it("accepts both pre-calendar and calendar registration response shapes", () => {
-    const base = {
+  it("accepts strict registration deadline fields and rejects incomplete rules", () => {
+    const parsed = taxRegistrationSchema.parse({
       id: "44444444-4444-4444-8444-444444444444",
       organization_id: ORGANIZATION_ID,
       authority_code: "NRS",
       registration_type: "VAT",
-      registration_number: null,
-      remittance_frequency: "MONTHLY" as const,
-      effective_from: "2026-01-01",
-      effective_to: null,
-      status: "ACTIVE" as const,
-      created_at: "2026-09-24T00:00:00Z",
-    };
-
-    const legacy = taxRegistrationSchema.parse(base);
-    expect(legacy.filing_deadline_rule).toBe("UNSPECIFIED");
-    expect(legacy.filing_due_day).toBeNull();
-    expect(legacy.period_end_month).toBe(12);
-
-    const calendar = taxRegistrationSchema.parse({
-      ...base,
+      registration_number: "VAT-001",
+      remittance_frequency: "MONTHLY",
       filing_deadline_rule: "DAY_OF_MONTH_AFTER_PERIOD",
       filing_due_day: 21,
       filing_due_month_offset: 1,
       period_end_month: 12,
-      deadline_authority_reference: "Nigeria Tax Administration Act 2025",
+      deadline_authority_reference:
+        "Nigeria Tax Administration Act 2025 — VAT filing deadline",
+      effective_from: "2026-01-01",
+      effective_to: null,
+      status: "ACTIVE",
+      created_at: "2026-09-24T00:00:00Z",
     });
-    expect(calendar.filing_due_day).toBe(21);
+
+    expect(parsed.filing_due_day).toBe(21);
+
+    expect(() =>
+      taxRegistrationInputSchema.parse({
+        authority_code: "NRS",
+        registration_type: "VAT",
+        registration_number: null,
+        remittance_frequency: "MONTHLY",
+        filing_deadline_rule: "DAY_OF_MONTH_AFTER_PERIOD",
+        filing_due_day: 21,
+        filing_due_month_offset: null,
+        period_end_month: 12,
+        deadline_authority_reference: "Nigeria Tax Administration Act 2025",
+        effective_from: "2026-01-01",
+        effective_to: null,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      taxRegistrationInputSchema.parse({
+        authority_code: "NRS",
+        registration_type: "VAT",
+        registration_number: null,
+        remittance_frequency: "MONTHLY",
+        filing_deadline_rule: "DAY_OF_MONTH_AFTER_PERIOD",
+        filing_due_day: 21,
+        filing_due_month_offset: 0,
+        period_end_month: 12,
+        deadline_authority_reference: "Invalid same-period deadline",
+        effective_from: "2026-01-01",
+        effective_to: null,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      taxRegistrationInputSchema.parse({
+        authority_code: "NRS",
+        registration_type: "STAMP_DUTY",
+        registration_number: null,
+        remittance_frequency: "ON_DEMAND",
+        filing_deadline_rule: "DAY_OF_MONTH_AFTER_PERIOD",
+        filing_due_day: 21,
+        filing_due_month_offset: 1,
+        period_end_month: 12,
+        deadline_authority_reference: "Invalid recurring rule",
+        effective_from: "2026-01-01",
+        effective_to: null,
+      }),
+    ).toThrow();
+  });
+
+  it("parses the compliance calendar without inventing filing completion", () => {
+    const parsed = taxComplianceCalendarSchema.parse({
+      organization_id: ORGANIZATION_ID,
+      from_date: "2026-09-01",
+      to_date: "2026-11-30",
+      as_of_date: "2026-09-24",
+      generated_at: "2026-09-24T12:00:00Z",
+      item_count: 1,
+      items: [
+        {
+          registration_id: "44444444-4444-4444-8444-444444444444",
+          authority_code: "NRS",
+          registration_type: "VAT",
+          registration_number: "VAT-001",
+          remittance_frequency: "MONTHLY",
+          period_start: "2026-09-01",
+          period_end: "2026-09-30",
+          due_date: "2026-10-21",
+          deadline_state: "UPCOMING",
+          completion_state: "UNTRACKED",
+          filing_deadline_rule: "DAY_OF_MONTH_AFTER_PERIOD",
+          deadline_authority_reference:
+            "Nigeria Tax Administration Act 2025 — VAT filing deadline",
+        },
+      ],
+      gaps: [
+        {
+          registration_id: "55555555-5555-4555-8555-555555555555",
+          authority_code: "NRS",
+          registration_type: "WHT",
+          registration_number: null,
+          remittance_frequency: "MONTHLY",
+          reason: "DEADLINE_RULE_MISSING",
+        },
+      ],
+      coverage: {
+        schedule_coverage: "INCOMPLETE",
+        recurring_registration_count: 2,
+        scheduled_registration_count: 1,
+        unscheduled_registration_count: 1,
+        completion_tracking: "NOT_IMPLEMENTED",
+        warning_codes: ["TAX_CALENDAR_DEADLINE_RULES_INCOMPLETE"],
+        warnings: ["One recurring registration has no filing deadline rule."],
+      },
+    });
+
+    expect(parsed.items[0]?.completion_state).toBe("UNTRACKED");
+    expect(parsed.coverage.schedule_coverage).toBe("INCOMPLETE");
   });
 
   it("rejects invalid registration effective ranges", () => {
