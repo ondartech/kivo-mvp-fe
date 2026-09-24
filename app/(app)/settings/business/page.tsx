@@ -41,6 +41,19 @@ export default function BusinessSettingsPage() {
 
       <Card>
         <CardContent className="p-5">
+          <div className="font-medium">Tax authority</div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage TaxCodes, effective statutory versions, Finance account
+            mappings and organization remittance registrations.
+          </p>
+          <Button variant="outline" size="sm" className="mt-3" asChild>
+            <Link href="/app/settings/tax">Manage tax</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5">
           <div className="font-medium">Document numbering</div>
           <p className="mt-1 text-sm text-muted-foreground">
             Configure Organization-wide or per-Branch sequences for invoices,
