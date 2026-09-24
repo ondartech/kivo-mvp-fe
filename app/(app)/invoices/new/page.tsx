@@ -98,13 +98,17 @@ export default function NewInvoicePage() {
 
   const previewTotals = async () => {
     if (!description.trim() || !issueDate || !lineInputAmount) return;
-    await preview.mutateAsync({
-      line_items: [currentLine()],
-      issue_date: issueDate,
-      discount_total: "0",
-      charge_total: "0",
-      currency: "NGN",
-    });
+    try {
+      await preview.mutateAsync({
+        line_items: [currentLine()],
+        issue_date: issueDate,
+        discount_total: "0",
+        charge_total: "0",
+        currency: "NGN",
+      });
+    } catch {
+      // React Query retains the authoritative API error for inline display.
+    }
   };
 
   const saveDraft = async (event?: FormEvent) => {
