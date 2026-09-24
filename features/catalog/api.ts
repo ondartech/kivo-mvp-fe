@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isOrganizationId } from "@/features/foundation/api";
 import { fetchWithAuth } from "@/lib/api-client";
@@ -57,24 +57,60 @@ export function useCatalogItems(
 ) {
   const params = new URLSearchParams({
     status: "ACTIVE",
-    limit: String(opts.limit ?? 250),
+    limit: String(Math.min(opts.limit ?? 100, 100)),
   });
 
   return useQuery<CommercialItemList>({
-    queryKey: ["catalog", orgId, "items", "ACTIVE", opts.direction ?? null],
+    queryKey: [
+      "catalog",
+      orgId,
+      "items",
+      "ACTIVE",
+      opts.direction ?? null,
+      opts.limit ?? 100,
+    ],
     queryFn: async () => {
       const res = await fetchWithAuth(
         baseUrl(orgId) + "/catalog/items?" + params.toString(),
         { method: "GET" },
       );
       const payload = await handleRes<CommercialItemList>(res);
-      const data = payload.data.filter((item) =>
-        opts.direction === "BUY" ? item.purchase_enabled : item.sales_enabled,
-      );
+      const data =
+        opts.direction === "BUY"
+          ? payload.data.filter((item) => item.purchase_enabled)
+          : opts.direction === "SELL"
+            ? payload.data.filter((item) => item.sales_enabled)
+            : payload.data;
       return { ...payload, data };
     },
     enabled: isOrganizationId(orgId),
     staleTime: 60_000,
     retry: 1,
+  });
+}
+
+export function useUpdateCatalogTaxDefaults(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CommercialItem,
+    Error,
+    {
+      itemId: string;
+      sales_tax_code_id?: string | null;
+      purchase_tax_code_id?: string | null;
+    }
+  >({
+    mutationFn: async ({ itemId, ...input }) => {
+      const res = await fetchWithAuth(baseUrl(orgId) + "/catalog/items/" + itemId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      return handleRes<CommercialItem>(res);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["catalog", orgId, "items"] });
+    },
   });
 }
