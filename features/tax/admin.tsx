@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFinanceAccounts } from "@/features/finance-explorer/api";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 import { CatalogTaxDefaults } from "./catalog-defaults";
+import { TaxComplianceCalendarPanel } from "./compliance-calendar";
 import {
   useAddTaxCodeVersion,
   useArchiveTaxCode,
@@ -1398,6 +1399,8 @@ export function TaxAdministration() {
       <CatalogTaxDefaults organizationId={organizationId} />
 
       <TaxRegistrationsPanel organizationId={organizationId} />
+
+      <TaxComplianceCalendarPanel organizationId={organizationId} />
     </div>
   );
 }
