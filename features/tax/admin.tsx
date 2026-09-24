@@ -33,7 +33,6 @@ import {
   taxCodeVersionInputSchema,
   taxRegistrationInputSchema,
   taxRolesForFamily,
-  type TaxAccountingRole,
   type TaxCodeCreateInput,
   type TaxCodeVersionInput,
   type TaxFamily,
