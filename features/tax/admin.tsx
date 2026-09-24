@@ -974,7 +974,8 @@ function TaxRegistrationsPanel({ organizationId }: { organizationId: string }) {
                   className={selectClassName}
                   value={remittanceFrequency}
                   onChange={(event) => {
-                    const next = event.target.value as TaxRegistrationInput["remittance_frequency"];
+                    const next = event.target.value as
+                      TaxRegistrationInput["remittance_frequency"];
                     form.setValue("remittance_frequency", next, {
                       shouldValidate: true,
                     });
