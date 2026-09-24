@@ -47,7 +47,7 @@ export function taxSelectionHint(args: {
   }
 
   const defaultId = catalogDefaultTaxCodeId(args.item, args.direction);
-  const inherited = findTaxCode(args.codes, defaultId);
+  const inherited = findTaxCode(documentAttachableTaxCodes(args.codes), defaultId);
   if (inherited) {
     return "Inherited from Catalog: " + taxCodeDisplay(inherited) + ". Leave the selector unchanged to keep the Catalog default.";
   }
