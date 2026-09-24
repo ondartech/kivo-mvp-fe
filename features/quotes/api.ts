@@ -29,6 +29,7 @@ export type QuoteLine = {
   quantity: string;
   unit_price: string;
   discount_amount: string;
+  tax_code_id: string | null;
   tax_rate: string | null;
   tax_amount: string;
   line_total: string;
@@ -80,7 +81,10 @@ export type QuoteLineInput = {
   quantity: string;
   unit_price: string;
   discount_amount?: string;
+  tax_code_id?: string | null;
   tax_rate?: string | null;
+  commercial_item_id?: string | null;
+  variant_id?: string | null;
 };
 
 export type QuoteCreateInput = {
@@ -109,6 +113,7 @@ export type QuoteCalculatePreview = {
     quantity: string;
     unit_price: string;
     discount_amount: string;
+    tax_code_id: string | null;
     tax_rate: string | null;
     tax_amount: string;
     line_total: string;
