@@ -170,6 +170,22 @@ describe("tax administration contracts", () => {
     expect(() =>
       taxRegistrationInputSchema.parse({
         authority_code: "NRS",
+        registration_type: "VAT",
+        registration_number: null,
+        remittance_frequency: "MONTHLY",
+        filing_deadline_rule: "DAY_OF_MONTH_AFTER_PERIOD",
+        filing_due_day: 21,
+        filing_due_month_offset: 0,
+        period_end_month: 12,
+        deadline_authority_reference: "Invalid same-period deadline",
+        effective_from: "2026-01-01",
+        effective_to: null,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      taxRegistrationInputSchema.parse({
+        authority_code: "NRS",
         registration_type: "STAMP_DUTY",
         registration_number: null,
         remittance_frequency: "ON_DEMAND",
