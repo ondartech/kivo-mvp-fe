@@ -70,18 +70,28 @@ export function useCatalogItems(
       opts.limit ?? 100,
     ],
     queryFn: async () => {
-      const res = await fetchWithAuth(
-        baseUrl(orgId) + "/catalog/items?" + params.toString(),
-        { method: "GET" },
-      );
-      const payload = await handleRes<CommercialItemList>(res);
+      const all: CommercialItem[] = [];
+      let cursor: string | null = null;
+
+      do {
+        const pageParams = new URLSearchParams(params);
+        if (cursor) pageParams.set("cursor", cursor);
+        const res = await fetchWithAuth(
+          baseUrl(orgId) + "/catalog/items?" + pageParams.toString(),
+          { method: "GET" },
+        );
+        const payload = await handleRes<CommercialItemList>(res);
+        all.push(...payload.data);
+        cursor = payload.next_cursor;
+      } while (cursor);
+
       const data =
         opts.direction === "BUY"
-          ? payload.data.filter((item) => item.purchase_enabled)
+          ? all.filter((item) => item.purchase_enabled)
           : opts.direction === "SELL"
-            ? payload.data.filter((item) => item.sales_enabled)
-            : payload.data;
-      return { ...payload, data };
+            ? all.filter((item) => item.sales_enabled)
+            : all;
+      return { data, next_cursor: null };
     },
     enabled: isOrganizationId(orgId),
     staleTime: 60_000,
