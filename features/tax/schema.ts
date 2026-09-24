@@ -287,7 +287,7 @@ export const taxRegistrationInputSchema = z
     filing_due_month_offset: z
       .number()
       .int()
-      .min(0)
+      .min(1)
       .max(24)
       .nullable()
       .default(null),
