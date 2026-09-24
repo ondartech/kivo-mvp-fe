@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useCustomer } from "@/features/customers/api";
 import { useInvoice } from "@/features/invoices/api";
 import { useOperatingBranches } from "@/features/organization/api";
+import { useTaxCodes } from "@/features/tax/api";
+import { findTaxCode } from "@/features/tax/document";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 
 export default function InvoiceDetailPage({
@@ -20,6 +22,7 @@ export default function InvoiceDetailPage({
   const invoice = useInvoice(orgId, params.invoiceId);
   const customer = useCustomer(orgId, invoice.data?.customer_id ?? "");
   const branchAccess = useOperatingBranches(orgId);
+  const taxCodes = useTaxCodes(orgId);
 
   const branch = useMemo(
     () =>
@@ -127,7 +130,22 @@ export default function InvoiceDetailPage({
                       key={line.id}
                       className="grid grid-cols-12 gap-2 py-3 text-sm"
                     >
-                      <span className="col-span-6">{line.description}</span>
+                      <span className="col-span-6">
+                        <span className="block">{line.description}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {findTaxCode(
+                            taxCodes.data?.data ?? [],
+                            line.tax_code_id,
+                          )?.code ?? "No TaxCode"}
+                          {line.tax_rate ? " · rate " + line.tax_rate : ""}
+                          {" · tax "}
+                          <MoneyAmount
+                            amount={line.tax_amount}
+                            currency={row.currency}
+                            emphasis="table"
+                          />
+                        </span>
+                      </span>
                       <span className="col-span-2 text-right tabular-nums">
                         {line.quantity}
                       </span>
