@@ -1103,7 +1103,7 @@ function TaxRegistrationsPanel({ organizationId }: { organizationId: string }) {
                       id="registration-due-offset"
                       className="mt-1"
                       type="number"
-                      min={deadlineRule === "MONTHS_AFTER_PERIOD_END" ? 1 : 0}
+                      min={1}
                       max={24}
                       {...form.register("filing_due_month_offset", {
                         setValueAs: (value) =>
