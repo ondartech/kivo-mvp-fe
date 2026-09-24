@@ -14,9 +14,12 @@ export type InvoiceLine = {
   quantity: string;
   unit_price: string;
   discount_amount: string;
+  tax_code_id: string | null;
   tax_rate: string | null;
   tax_amount: string;
   line_total: string;
+  commercial_item_id: string | null;
+  variant_id: string | null;
   product_service_id: string | null;
   service_id: string | null;
   source_order_id?: string | null;
@@ -87,6 +90,9 @@ export type InvoiceCreateInput = {
     quantity: string;
     unit_price: string;
     discount_amount?: string;
+    commercial_item_id?: string | null;
+    variant_id?: string | null;
+    tax_code_id?: string | null;
     tax_rate?: string | null;
     product_service_id?: string | null;
     service_id?: string | null;
@@ -159,6 +165,48 @@ export function useInvoice(orgId: string, invoiceId: string) {
       return handleRes<Invoice>(res);
     },
     enabled: isUuid(orgId) && isUuid(invoiceId),
+  });
+}
+
+export type InvoiceCalculatePreview = {
+  preview: true;
+  subtotal: string;
+  discount_total: string;
+  tax_total: string;
+  charge_total: string;
+  grand_total: string;
+  line_totals: Array<{
+    line_number: number;
+    quantity: string;
+    unit_price: string;
+    discount_amount: string;
+    tax_code_id: string | null;
+    tax_rate: string | null;
+    tax_amount: string;
+    line_total: string;
+  }>;
+};
+
+export function useCalculateInvoicePreview(orgId: string) {
+  return useMutation<
+    InvoiceCalculatePreview,
+    Error,
+    {
+      line_items: InvoiceCreateInput["line_items"];
+      issue_date?: string | null;
+      discount_total?: string;
+      charge_total?: string;
+      currency?: string | null;
+    }
+  >({
+    mutationFn: async (input) => {
+      const res = await fetchWithAuth(`${baseUrl(orgId)}/invoices/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      return handleRes<InvoiceCalculatePreview>(res);
+    },
   });
 }
 
