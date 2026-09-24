@@ -971,7 +971,27 @@ function TaxRegistrationsPanel({ organizationId }: { organizationId: string }) {
                 <select
                   id="registration-frequency"
                   className={selectClassName}
-                  {...form.register("remittance_frequency")}
+                  value={remittanceFrequency}
+                  onChange={(event) => {
+                    const next = event.target.value as TaxRegistrationInput["remittance_frequency"];
+                    form.setValue("remittance_frequency", next, {
+                      shouldValidate: true,
+                    });
+                    if (next === "ON_DEMAND") {
+                      form.setValue("filing_deadline_rule", "UNSPECIFIED", {
+                        shouldValidate: true,
+                      });
+                      form.setValue("filing_due_day", null, {
+                        shouldValidate: true,
+                      });
+                      form.setValue("filing_due_month_offset", null, {
+                        shouldValidate: true,
+                      });
+                      form.setValue("deadline_authority_reference", null, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
                 >
                   <option value="MONTHLY">Monthly</option>
                   <option value="QUARTERLY">Quarterly</option>
@@ -983,6 +1003,144 @@ function TaxRegistrationsPanel({ organizationId }: { organizationId: string }) {
                 />
               </div>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="registration-deadline-rule">Filing deadline rule</Label>
+                <select
+                  id="registration-deadline-rule"
+                  className={selectClassName}
+                  value={deadlineRule}
+                  disabled={remittanceFrequency === "ON_DEMAND"}
+                  onChange={(event) => {
+                    const next = event.target.value as TaxFilingDeadlineRule;
+                    form.setValue("filing_deadline_rule", next, {
+                      shouldValidate: true,
+                    });
+                    form.setValue("filing_due_day", null, {
+                      shouldValidate: true,
+                    });
+                    form.setValue("filing_due_month_offset", null, {
+                      shouldValidate: true,
+                    });
+                    form.setValue("deadline_authority_reference", null, {
+                      shouldValidate: true,
+                    });
+                  }}
+                >
+                  <option value="UNSPECIFIED">Not configured</option>
+                  <option value="DAY_OF_MONTH_AFTER_PERIOD">
+                    Fixed day after period
+                  </option>
+                  <option value="MONTHS_AFTER_PERIOD_END">
+                    Months after period end
+                  </option>
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Cadence alone does not establish a legal due date.
+                </p>
+                <FieldError
+                  message={form.formState.errors.filing_deadline_rule?.message}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="registration-period-end-month">
+                  Period anchor month
+                </Label>
+                <Input
+                  id="registration-period-end-month"
+                  className="mt-1"
+                  type="number"
+                  min={1}
+                  max={12}
+                  disabled={
+                    remittanceFrequency === "MONTHLY" ||
+                    remittanceFrequency === "ON_DEMAND"
+                  }
+                  {...form.register("period_end_month", {
+                    valueAsNumber: true,
+                  })}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Used for quarterly and annual cycles; 12 means December.
+                </p>
+                <FieldError
+                  message={form.formState.errors.period_end_month?.message}
+                />
+              </div>
+            </div>
+
+            {deadlineRule !== "UNSPECIFIED" &&
+            remittanceFrequency !== "ON_DEMAND" ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {deadlineRule === "DAY_OF_MONTH_AFTER_PERIOD" ? (
+                    <div>
+                      <Label htmlFor="registration-due-day">Due day of month</Label>
+                      <Input
+                        id="registration-due-day"
+                        className="mt-1"
+                        type="number"
+                        min={1}
+                        max={31}
+                        {...form.register("filing_due_day", {
+                          setValueAs: (value) =>
+                            value === "" ? null : Number(value),
+                        })}
+                      />
+                      <FieldError
+                        message={form.formState.errors.filing_due_day?.message}
+                      />
+                    </div>
+                  ) : null}
+                  <div>
+                    <Label htmlFor="registration-due-offset">
+                      Months after period end
+                    </Label>
+                    <Input
+                      id="registration-due-offset"
+                      className="mt-1"
+                      type="number"
+                      min={deadlineRule === "MONTHS_AFTER_PERIOD_END" ? 1 : 0}
+                      max={24}
+                      {...form.register("filing_due_month_offset", {
+                        setValueAs: (value) =>
+                          value === "" ? null : Number(value),
+                      })}
+                    />
+                    <FieldError
+                      message={
+                        form.formState.errors.filing_due_month_offset?.message
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="registration-deadline-authority">
+                    Deadline authority reference
+                  </Label>
+                  <Input
+                    id="registration-deadline-authority"
+                    className="mt-1"
+                    placeholder="Nigeria Tax Administration Act 2025 — VAT due by 21st day of following month"
+                    {...form.register("deadline_authority_reference", {
+                      setValueAs: (value) => (value ? value : null),
+                    })}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Example for NRS VAT: fixed day 21, one month after period end.
+                    Ondar does not infer legal deadlines from the tax type.
+                  </p>
+                  <FieldError
+                    message={
+                      form.formState.errors.deadline_authority_reference?.message
+                    }
+                  />
+                </div>
+              </>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -1052,6 +1210,11 @@ function TaxRegistrationsPanel({ organizationId }: { organizationId: string }) {
                 </div>
                 <div className="sm:col-span-2">
                   {humanizeTaxValue(registration.remittance_frequency)}
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {registration.filing_deadline_rule === "UNSPECIFIED"
+                      ? "Deadline not configured"
+                      : humanizeTaxValue(registration.filing_deadline_rule)}
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   {registration.effective_from}
