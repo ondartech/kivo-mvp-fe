@@ -17,10 +17,16 @@ import {
   taxRegistrationInputSchema,
   taxRegistrationListSchema,
   taxRegistrationSchema,
+  taxReserveBankAccountSchema,
+  taxReserveInstructionSchema,
+  taxReservePolicyInputSchema,
+  taxReservePolicySchema,
+  taxReservePositionSchema,
   type TaxAccountMappingInput,
   type TaxCodeCreateInput,
   type TaxCodeVersionInput,
   type TaxRegistrationInput,
+  type TaxReservePolicyInput,
 } from "./schema";
 
 function baseUrl(orgId: string): string {
@@ -310,3 +316,123 @@ export function useCreateTaxRegistration(orgId: string) {
     },
   });
 }
+
+function organizationBaseUrl(orgId: string): string {
+  return (
+    env.NEXT_PUBLIC_API_URL.replace(/\/$/, "") +
+    "/api/v1/organizations/" +
+    orgId
+  );
+}
+
+export function useTaxReserveBankAccounts(orgId: string) {
+  return useQuery({
+    queryKey: ["tax", orgId, "treasury", "bank-accounts"],
+    queryFn: async () => {
+      requireOrganizationId(orgId);
+      const response = await fetchWithAuth(
+        organizationBaseUrl(orgId) + "/bank-accounts",
+        { method: "GET" },
+      );
+      return parseResponse(response, (value) =>
+        taxReserveBankAccountSchema.array().parse(value),
+      );
+    },
+    enabled: isOrganizationId(orgId),
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useTaxReservePolicy(orgId: string) {
+  return useQuery({
+    queryKey: ["tax", orgId, "treasury", "reserve-policy"],
+    queryFn: async () => {
+      requireOrganizationId(orgId);
+      const response = await fetchWithAuth(
+        baseUrl(orgId) + "/treasury/reserve-policy",
+        { method: "GET" },
+      );
+      if (response.status === 404) return null;
+      return parseResponse(response, (value) => taxReservePolicySchema.parse(value));
+    },
+    enabled: isOrganizationId(orgId),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+export function useTaxReservePosition(orgId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["tax", orgId, "treasury", "reserve-position"],
+    queryFn: async () => {
+      requireOrganizationId(orgId);
+      const response = await fetchWithAuth(
+        baseUrl(orgId) + "/treasury/reserve-position",
+        { method: "GET" },
+      );
+      return parseResponse(response, (value) =>
+        taxReservePositionSchema.parse(value),
+      );
+    },
+    enabled: isOrganizationId(orgId) && enabled,
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+export function useUpsertTaxReservePolicy(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: TaxReservePolicyInput) => {
+      requireOrganizationId(orgId);
+      const payload = taxReservePolicyInputSchema.parse(input);
+      const response = await fetchWithAuth(
+        baseUrl(orgId) + "/treasury/reserve-policy",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+      return parseResponse(response, (value) => taxReservePolicySchema.parse(value));
+    },
+    onSuccess: async (policy) => {
+      queryClient.setQueryData(
+        ["tax", orgId, "treasury", "reserve-policy"],
+        policy,
+      );
+      await queryClient.invalidateQueries({
+        queryKey: ["tax", orgId, "treasury", "reserve-position"],
+      });
+    },
+  });
+}
+
+export function useReconcileTaxReserve(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      requireOrganizationId(orgId);
+      const response = await fetchWithAuth(
+        baseUrl(orgId) + "/treasury/reconcile",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ as_of_date: null }),
+        },
+      );
+      return parseResponse(response, (value) =>
+        taxReserveInstructionSchema.parse(value),
+      );
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["tax", orgId, "treasury", "reserve-position"],
+      });
+    },
+  });
+}
+
