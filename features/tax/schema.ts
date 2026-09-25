@@ -388,7 +388,7 @@ export const taxRegistrationInputSchema = z
 
 const nonNegativeDecimalStringSchema = z
   .string()
-  .regex(/^\\d+(?:\\.\\d+)?$/, "Expected an exact non-negative decimal string.");
+  .regex(/^\d+(?:\.\d+)?$/, "Expected an exact non-negative decimal string.");
 
 export const taxReserveBankAccountSchema = z
   .object({
