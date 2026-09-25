@@ -75,6 +75,17 @@ async function parseResponse<T>(
   return parse(body);
 }
 
+async function responseErrorCode(response: Response): Promise<string | undefined> {
+  const body: unknown = await response.clone().json().catch(() => null);
+  if (!body || typeof body !== "object") return undefined;
+  const root = body as Record<string, unknown>;
+  const nested =
+    root.error && typeof root.error === "object"
+      ? (root.error as Record<string, unknown>)
+      : root;
+  return typeof nested.code === "string" ? nested.code : undefined;
+}
+
 export function useTaxCodes(orgId: string) {
   return useQuery({
     queryKey: ["tax", orgId, "codes"],
@@ -353,8 +364,15 @@ export function useTaxReservePolicy(orgId: string) {
         baseUrl(orgId) + "/treasury/reserve-policy",
         { method: "GET" },
       );
-      if (response.status === 404) return null;
-      return parseResponse(response, (value) => taxReservePolicySchema.parse(value));
+      if (
+        response.status === 404 &&
+        (await responseErrorCode(response)) === "TAX_RESERVE_POLICY_NOT_CONFIGURED"
+      ) {
+        return null;
+      }
+      return parseResponse(response, (value) =>
+        taxReservePolicySchema.parse(value),
+      );
     },
     enabled: isOrganizationId(orgId),
     staleTime: 15_000,
