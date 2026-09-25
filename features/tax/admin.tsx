@@ -16,6 +16,7 @@ import { useFinanceAccounts } from "@/features/finance-explorer/api";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 import { CatalogTaxDefaults } from "./catalog-defaults";
 import { TaxComplianceCalendarPanel } from "./compliance-calendar";
+import { TaxTreasuryReservePanel } from "./treasury-reserve";
 import {
   useAddTaxCodeVersion,
   useArchiveTaxCode,
@@ -1278,7 +1279,7 @@ export function TaxAdministration() {
       <PageHeader
         eyebrow="Business settings"
         title="Tax"
-        description="Manage statutory tax identities, immutable effective versions, Finance mappings, and organization remittance registrations."
+        description="Manage statutory tax identities, Finance mappings, compliance deadlines, and ledger-derived tax reserve policy."
         actions={
           <Button
             size="sm"
@@ -1402,6 +1403,8 @@ export function TaxAdministration() {
       <TaxRegistrationsPanel organizationId={organizationId} />
 
       <TaxComplianceCalendarPanel organizationId={organizationId} />
+
+      <TaxTreasuryReservePanel organizationId={organizationId} />
     </div>
   );
 }
