@@ -385,6 +385,137 @@ export const taxRegistrationInputSchema = z
     }
   });
 
+
+const nonNegativeDecimalStringSchema = z
+  .string()
+  .regex(/^\d+(?:\.\d+)?$/, "Expected an exact non-negative decimal string.");
+
+export const taxReserveBankAccountSchema = z
+  .object({
+    id: z.string().uuid(),
+    organization_id: z.string().uuid(),
+    bank_code: z.string(),
+    bank_name: z.string(),
+    account_number_masked: z.string(),
+    account_number_last4: z.string(),
+    account_name: z.string(),
+    currency: z.string().length(3),
+    verification_status: z.string(),
+    verification_match_type: z.string().nullable(),
+    verified_at: z.string().nullable(),
+    is_default: z.boolean(),
+    status: z.string(),
+    created_at: z.string(),
+    updated_at: z.string(),
+  })
+  .strict();
+
+export const taxReserveDestinationSchema = z
+  .object({
+    bank_account_id: z.string().uuid(),
+    bank_name: z.string(),
+    account_name: z.string(),
+    account_number_last4: z.string(),
+    currency: z.string().length(3),
+    verification_status: z.string(),
+  })
+  .strict();
+
+export const taxReservePolicyStatusSchema = z.enum(["ACTIVE", "PAUSED"]);
+
+export const taxReservePolicySchema = z
+  .object({
+    id: z.string().uuid(),
+    organization_id: z.string().uuid(),
+    status: taxReservePolicyStatusSchema,
+    reserve_basis: z.literal("GROSS_POSITIVE_LIABILITY"),
+    destination: taxReserveDestinationSchema,
+    created_by_user_id: z.string().uuid().nullable(),
+    updated_by_user_id: z.string().uuid().nullable(),
+    created_at: z.string(),
+    updated_at: z.string(),
+  })
+  .strict();
+
+export const taxReservePolicyInputSchema = z
+  .object({
+    destination_bank_account_id: z.string().uuid("Choose a bank account."),
+    status: taxReservePolicyStatusSchema,
+  })
+  .strict();
+
+export const taxReserveInstructionSchema = z
+  .object({
+    id: z.string().uuid(),
+    organization_id: z.string().uuid(),
+    policy_id: z.string().uuid(),
+    status: z.enum(["PENDING_EXTERNAL_EXECUTION", "SUPERSEDED"]),
+    reserve_basis: z.literal("GROSS_POSITIVE_LIABILITY"),
+    execution_semantics: z.literal("ENSURE_MINIMUM_BALANCE"),
+    execution_authority: z.literal("EXTERNAL_TREASURY_REQUIRED"),
+    releases_authorized: z.literal(false),
+    as_of_date: isoDateSchema,
+    position_from_date: isoDateSchema,
+    position_to_date: isoDateSchema,
+    target_reserve_balance: nonNegativeDecimalStringSchema,
+    currency: z.string().length(3),
+    destination_bank_account_id: z.string().uuid(),
+    calculation_hash: z.string().min(1),
+    event_id: z.string().uuid(),
+    superseded_at: z.string().nullable(),
+    superseded_by_instruction_id: z.string().uuid().nullable(),
+    created_by_user_id: z.string().uuid().nullable(),
+    created_at: z.string(),
+  })
+  .strict();
+
+export const taxReserveCoverageSchema = z
+  .object({
+    ledger_authority: z.literal("POSTED_GENERAL_LEDGER"),
+    finance_cutover_date: isoDateSchema,
+    posting_coverage: z.enum(["COMPLETE", "INCOMPLETE"]),
+    unposted_tax_event_count: z.number().int().nonnegative(),
+    accepted_tax_event_count: z.number().int().nonnegative(),
+    posting_tax_event_count: z.number().int().nonnegative(),
+    posting_failed_tax_event_count: z.number().int().nonnegative(),
+    unattributed_mapped_account_line_count: z.number().int().nonnegative(),
+    remittance_coverage: z.literal("NOT_IMPLEMENTED"),
+    warning_codes: z.array(z.string()),
+    warnings: z.array(z.string()),
+  })
+  .strict();
+
+export const taxReservePositionSchema = z
+  .object({
+    organization_id: z.string().uuid(),
+    base_currency: z.string().length(3),
+    as_of_date: isoDateSchema,
+    reserve_basis: z.literal("GROSS_POSITIVE_LIABILITY"),
+    target_reserve_balance: nonNegativeDecimalStringSchema,
+    policy: taxReservePolicySchema,
+    calculation_hash: z.string().min(1),
+    latest_instruction: taxReserveInstructionSchema.nullable(),
+    instruction_current: z.boolean(),
+    execution_semantics: z.literal("ENSURE_MINIMUM_BALANCE"),
+    execution_authority: z.literal("EXTERNAL_TREASURY_REQUIRED"),
+    releases_authorized: z.literal(false),
+    coverage: taxReserveCoverageSchema,
+  })
+  .strict();
+
+export type TaxReserveBankAccount = z.infer<typeof taxReserveBankAccountSchema>;
+export type TaxReservePolicy = z.infer<typeof taxReservePolicySchema>;
+export type TaxReservePolicyStatus = z.infer<typeof taxReservePolicyStatusSchema>;
+export type TaxReservePolicyInput = z.infer<typeof taxReservePolicyInputSchema>;
+export type TaxReserveInstruction = z.infer<typeof taxReserveInstructionSchema>;
+export type TaxReservePosition = z.infer<typeof taxReservePositionSchema>;
+
+export function isTaxReserveEligibleBankAccount(
+  account: TaxReserveBankAccount,
+): boolean {
+  return account.status === "ACTIVE" && account.verification_status === "VERIFIED";
+}
+
 export type TaxFamily = z.infer<typeof taxFamilySchema>;
 export type TaxTreatment = z.infer<typeof taxTreatmentSchema>;
 export type TaxRecognitionRule = z.infer<typeof taxRecognitionRuleSchema>;
