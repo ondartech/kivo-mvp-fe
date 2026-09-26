@@ -26,9 +26,9 @@ export default function SignupPage() {
     try {
       const authorizationUrl = await beginOAuth(provider);
       window.location.href = authorizationUrl;
-    } catch (e: any) {
+    } catch (e: unknown) {
       const providerName = provider === "google" ? "Google" : "Microsoft";
-      setError(e?.message || `Failed to start ${providerName} sign-up`);
+      setError(e instanceof Error ? e.message : `Failed to start ${providerName} sign-up`);
       setOAuthLoading(null);
     }
   };
@@ -46,8 +46,8 @@ export default function SignupPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error?.message || "Sign up failed");
       router.push(`/verify?email=${encodeURIComponent(email)}`);
-    } catch (e: any) {
-      setError(e?.message || "Sign up failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Sign up failed");
     } finally {
       setLoading(false);
     }
