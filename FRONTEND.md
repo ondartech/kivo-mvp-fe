@@ -384,7 +384,13 @@ The route map should reflect the information architecture (`DESIGN.md v2.1 §17/
 /quotes/new
 /quotes/[quoteId]          // Accepted → Create Invoice
 /receivables
-/payments
+/payments                            // PAYRUN-FE-001 Payment Operations command center
+/payments/runs                       // Payment Run lifecycle inventory + archive visibility
+/payments/runs/new                   // server-previewed obligation selection + draft reservation
+/payments/runs/[paymentRunId]        // destinations → approval → execution → reconciliation → outcomes
+/payments/executions                 // bounded execution queue; dispatch/acceptance != settlement
+/payments/reconciliation             // authoritative outcome evidence and Finance posting attention
+/settings/payments                   // recurring Payment Run templates + WF-001 payment outcome triggers
 /finance/matching                    // N2-FIN-005 Supplier Bill review queue
 /finance/matching/[billId]           // Ordered→Received→Billed→Variance + exceptions
 /compliance/nrs            // Mature list, MVP2 detail panel only  KIV × NRS SPEC
@@ -836,3 +842,45 @@ MVP2 commercial proposal workflow on the live Quote domain.
 - Direct authenticated Quote reads rely on backend BRN-READ-003 persisted-Branch
   authorization; browser Branch context is never treated as authority.
 
+
+
+## Payment Operations — PAYRUN-FE-001
+
+The Payment Operations frontend consumes the canonical backend lifecycle rather than
+inventing a second money-out state machine.
+
+```text
+Payment Obligation
+→ Payment Run draft/reservation
+→ server preview
+→ submission + ApprovalRequest
+→ prepared PaymentExecution
+→ step-up protected release
+→ PaymentInstruction result evidence
+→ authoritative reconciliation
+→ source-domain PaymentOutcomePropagation
+→ optional WF-001 human follow-up
+```
+
+Rules:
+
+- The browser never calculates authoritative run totals, available obligation balances,
+  settlement, clearing, or approval thresholds. It renders backend Decimal strings.
+- Payment Run preview is non-reserving and must be refreshed after material changes.
+- Every active run line requires a backend-recognized executable beneficiary destination
+  before submission.
+- Approval and execution are separate consequential actions. Step-up tokens are requested
+  and forwarded only to the matching backend authority boundary.
+- CSV/bank-file export means dispatch only; it must never render as payment settlement.
+- Reconciliation records explicit evidence for IN_TRANSIT, SETTLED or NOT_SETTLED.
+- FINANCE_POSTING_FAILED is not reconciled again; the existing settlement evidence remains
+  authoritative while Finance recovery is handled separately.
+- Terminal Payment Runs are archived, not deleted. Archive/unarchive is operational
+  visibility state and does not remove financial evidence.
+- Payment Run item source/outcome detail is fetched on demand to avoid an N+1 request fan-out
+  on large runs.
+- Recurring templates generate DRAFT Payment Runs only. They never submit, approve or release
+  money automatically.
+- The guided payment workflow surface creates a published HUMAN_TASK workflow and a typed
+  `payments.payment_outcome_propagated` trigger. It does not expose automated payment
+  actions until corresponding backend action handlers are registered and governed.
