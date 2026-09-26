@@ -17,6 +17,7 @@ import type {
   PaymentReconciliationQueueItem,
   PaymentRun,
   PaymentRunOperations,
+  PaymentRunPreview,
   PaymentRunTemplate,
   PaymentSafetyControl,
   TenantEmergencyPosture,
@@ -355,6 +356,24 @@ export function useCreatePaymentRun(orgId: string) {
     onSuccess: async () => {
       await invalidatePayments(queryClient, orgId);
     },
+  });
+}
+
+export function usePreviewPaymentRun(orgId: string) {
+  return useMutation({
+    mutationFn: async (input: {
+      currency: string;
+      funding_bank_account_id: string;
+      scheduled_execution_date?: string;
+      items: Array<{ payment_obligation_id: string; amount: string }>;
+    }) =>
+      handleRes<PaymentRunPreview>(
+        await fetchWithAuth(`${baseUrl(orgId)}/payment-runs/preview`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        }),
+      ),
   });
 }
 
