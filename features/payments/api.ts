@@ -16,6 +16,7 @@ import {
   executionQueueSchema,
   paymentExecutionSchema,
   paymentObligationListSchema,
+  paymentObligationSchema,
   paymentOperationsSummarySchema,
   paymentRunItemDetailSchema,
   paymentRunListSchema,
@@ -164,6 +165,50 @@ export function usePaymentObligations(
     },
     enabled: isOrganizationId(orgId),
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useHoldPaymentObligation(orgId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { obligationId: string; reason: string }) => {
+      const response = await fetchWithAuth(
+        `${baseUrl(orgId)}/payment-obligations/${payload.obligationId}/hold`,
+        {
+          method: "POST",
+          headers: jsonHeaders(),
+          body: JSON.stringify({ reason: payload.reason }),
+        },
+      );
+      return parseResponse(response, (value) =>
+        paymentObligationSchema.parse(value),
+      );
+    },
+    onSuccess: () => {
+      invalidatePaymentOperations(queryClient, orgId);
+    },
+  });
+}
+
+export function useReleasePaymentObligation(orgId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { obligationId: string; reason: string }) => {
+      const response = await fetchWithAuth(
+        `${baseUrl(orgId)}/payment-obligations/${payload.obligationId}/release`,
+        {
+          method: "POST",
+          headers: jsonHeaders(),
+          body: JSON.stringify({ reason: payload.reason }),
+        },
+      );
+      return parseResponse(response, (value) =>
+        paymentObligationSchema.parse(value),
+      );
+    },
+    onSuccess: () => {
+      invalidatePaymentOperations(queryClient, orgId);
+    },
   });
 }
 
@@ -427,6 +472,37 @@ export async function addPaymentRunItemCommand(
     },
   );
   return parseResponse(response, (value) => paymentRunSchema.parse(value));
+}
+
+export function useUpdatePaymentRun(orgId: string, paymentRunId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      name?: string | null;
+      funding_bank_account_id?: string | null;
+      scheduled_execution_date?: string | null;
+    }) => {
+      const response = await fetchWithAuth(
+        `${baseUrl(orgId)}/payment-runs/${paymentRunId}`,
+        {
+          method: "PATCH",
+          headers: jsonHeaders(),
+          body: JSON.stringify(input),
+        },
+      );
+      return parseResponse(response, (value) => paymentRunSchema.parse(value));
+    },
+    onSuccess: (run) => {
+      queryClient.setQueryData(
+        ["payment-run", orgId, paymentRunId, "operations"],
+        (current: unknown) => {
+          if (!current || typeof current !== "object") return current;
+          return { ...(current as Record<string, unknown>), run };
+        },
+      );
+      invalidatePaymentOperations(queryClient, orgId);
+    },
+  });
 }
 
 export function useAddPaymentRunItem(orgId: string, paymentRunId: string) {
@@ -774,6 +850,42 @@ export function useRecordInstructionResult(
             external_reference: payload.external_reference ?? null,
             failure_code: payload.failure_code ?? null,
             failure_reason: payload.failure_reason ?? null,
+            evidence: payload.evidence ?? {},
+          }),
+        },
+      );
+      return parseResponse(response, (value) => paymentExecutionSchema.parse(value));
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["payment-run", orgId, paymentRunId],
+      });
+      invalidatePaymentOperations(queryClient, orgId);
+    },
+  });
+}
+
+export function useRetryPaymentInstruction(
+  orgId: string,
+  paymentRunId: string,
+  executionId: string,
+  instructionId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      externalReference: string;
+      evidence?: Record<string, unknown>;
+      idempotencyKey: string;
+      stepUpToken?: string | null;
+    }) => {
+      const response = await fetchWithAuth(
+        `${baseUrl(orgId)}/payment-executions/${executionId}/instructions/${instructionId}/retry`,
+        {
+          method: "POST",
+          headers: jsonHeaders(payload.idempotencyKey, payload.stepUpToken),
+          body: JSON.stringify({
+            external_reference: payload.externalReference,
             evidence: payload.evidence ?? {},
           }),
         },
