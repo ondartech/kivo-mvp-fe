@@ -645,7 +645,12 @@ function PaymentRunLine({
   );
 
   const saveDestination = async () => {
-    if (!bankCode.trim() || !bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
+    if (
+      !bankCode.trim() ||
+      !bankName.trim() ||
+      !accountNumber.trim() ||
+      !accountName.trim()
+    ) {
       toast.error("Complete the beneficiary bank destination.");
       return;
     }
@@ -661,32 +666,34 @@ function PaymentRunLine({
       setShowDestination(false);
       toast.success("Beneficiary destination configured");
       onChanged();
-      await detail.refetch();
     } catch (error) {
       toast.error(paymentOperationsErrorMessage(error));
     }
   };
 
+  const beneficiaryLabel =
+    snapshotName(item.beneficiary_snapshot) ??
+    snapshotName(item.source_snapshot) ??
+    shortPaymentId(item.payment_obligation_id);
+
   return (
-    <div className={item.status === "REMOVED" ? "bg-neutral-50 px-5 py-4 opacity-60" : "px-5 py-4"}>
+    <div
+      className={
+        item.status === "REMOVED"
+          ? "bg-neutral-50 px-5 py-4 opacity-60"
+          : "px-5 py-4"
+      }
+    >
       <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_auto]">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium">
-              {detail.data
-                ? snapshotName(detail.data.obligation.beneficiary_snapshot) ??
-                  humanizePaymentValue(detail.data.obligation.obligation_type)
-                : shortPaymentId(item.payment_obligation_id)}
-            </span>
+            <span className="text-sm font-medium">{beneficiaryLabel}</span>
             <Badge variant={item.status === "SETTLED" ? "success" : "neutral"}>
               {humanizePaymentValue(item.status)}
             </Badge>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             Obligation {shortPaymentId(item.payment_obligation_id)}
-            {detail.data
-              ? ` · ${humanizePaymentValue(detail.data.obligation.source_type)} · ${humanizePaymentValue(detail.data.obligation.control_status)}`
-              : ""}
           </div>
           <div className="mt-2 text-lg font-semibold tabular-nums">
             {formatMoney(item.allocated_amount, item.currency)}
@@ -715,14 +722,22 @@ function PaymentRunLine({
               variant="outline"
               onClick={() => setShowDestination((value) => !value)}
             >
-              {item.destination_configured ? "Change destination" : "Set destination"}
+              {item.destination_configured
+                ? "Change destination"
+                : "Set destination"}
             </Button>
             <Button
               size="sm"
               variant="outline"
               disabled={remove.isPending}
               onClick={async () => {
-                if (!window.confirm("Remove this obligation from the draft Payment Run?")) return;
+                if (
+                  !window.confirm(
+                    "Remove this obligation from the draft Payment Run?",
+                  )
+                ) {
+                  return;
+                }
                 try {
                   await remove.mutateAsync(item.id);
                   toast.success("Obligation removed from Payment Run");
@@ -744,7 +759,9 @@ function PaymentRunLine({
           variant="outline"
           onClick={() => setShowEvidence((value) => !value)}
         >
-          {showEvidence ? "Hide source & outcome evidence" : "Source & outcome evidence"}
+          {showEvidence
+            ? "Hide source & outcome evidence"
+            : "Source & outcome evidence"}
         </Button>
       </div>
 
@@ -808,9 +825,9 @@ function PaymentRunLine({
             Item evidence is temporarily unavailable.
           </div>
         ) : (
-          <>
+          <div className="mt-4 space-y-3">
             {detail.data ? (
-              <div className="mt-4 grid gap-2 rounded-md border bg-neutral-50 p-3 text-xs sm:grid-cols-3">
+              <div className="grid gap-2 rounded-md border bg-neutral-50 p-3 text-xs sm:grid-cols-3">
                 <div>
                   <div className="text-muted-foreground">Source</div>
                   <div className="font-medium">
@@ -822,7 +839,9 @@ function PaymentRunLine({
                   <div className="text-muted-foreground">Obligation state</div>
                   <div className="font-medium">
                     {humanizePaymentValue(detail.data.obligation.status)} ·{" "}
-                    {humanizePaymentValue(detail.data.obligation.control_status)}
+                    {humanizePaymentValue(
+                      detail.data.obligation.control_status,
+                    )}
                   </div>
                 </div>
                 <div>
@@ -835,50 +854,59 @@ function PaymentRunLine({
                 </div>
               </div>
             ) : null}
-      {(detail.data?.outcomes.length ?? 0) > 0 ? (
-        <div className="mt-4 rounded-md border p-3">
-          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Source-domain outcomes
-          </div>
-          <div className="mt-2 space-y-2">
-            {detail.data?.outcomes.map((outcome) => (
-              <div
-                key={outcome.id}
-                className="flex flex-col justify-between gap-2 border-t pt-2 first:border-t-0 first:pt-0 sm:flex-row"
-              >
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    {humanizePaymentValue(outcome.outcome_type)}
-                    <Badge variant={paymentOutcomeStatusVariant(outcome.status)}>
-                      {humanizePaymentValue(outcome.status)}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {humanizePaymentValue(outcome.source_type)} · source{" "}
-                    {shortPaymentId(outcome.source_id)}
-                    {outcome.last_error_reason
-                      ? ` · ${outcome.last_error_reason}`
-                      : ""}
-                  </div>
+
+            {(detail.data?.outcomes.length ?? 0) > 0 ? (
+              <div className="rounded-md border p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Source-domain outcomes
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {outcome.propagated_at
-                    ? `Propagated ${formatTimestamp(outcome.propagated_at)}`
-                    : outcome.quarantined_at
-                      ? `Quarantined ${formatTimestamp(outcome.quarantined_at)}`
-                      : `Attempt ${outcome.attempt_count}`}
+                <div className="mt-2 space-y-2">
+                  {detail.data?.outcomes.map((outcome) => (
+                    <div
+                      key={outcome.id}
+                      className="flex flex-col justify-between gap-2 border-t pt-2 first:border-t-0 first:pt-0 sm:flex-row"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          {humanizePaymentValue(outcome.outcome_type)}
+                          <Badge
+                            variant={paymentOutcomeStatusVariant(outcome.status)}
+                          >
+                            {humanizePaymentValue(outcome.status)}
+                          </Badge>
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {humanizePaymentValue(outcome.source_type)} · source{" "}
+                          {shortPaymentId(outcome.source_id)}
+                          {outcome.last_error_reason
+                            ? ` · ${outcome.last_error_reason}`
+                            : ""}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {outcome.propagated_at
+                          ? `Propagated ${formatTimestamp(outcome.propagated_at)}`
+                          : outcome.quarantined_at
+                            ? `Quarantined ${formatTimestamp(
+                                outcome.quarantined_at,
+                              )}`
+                            : `Attempt ${outcome.attempt_count}`}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No source-domain outcome propagation has been recorded for this
+                line yet.
+              </div>
+            )}
           </div>
-        </div>
+        )
       ) : null}
     </div>
   );
-          </>
-        )
-      ) : null}
-
 }
 
 function ExecutionControls({
