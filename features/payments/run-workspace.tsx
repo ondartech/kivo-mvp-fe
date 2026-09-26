@@ -48,7 +48,7 @@ import {
   reconciliationEvidenceTypes,
   shortPaymentId,
 } from "./payment-runs";
-import type { PaymentInstruction, PaymentRunItem } from "./schema";
+import type { PaymentExecution, PaymentInstruction, PaymentRunItem } from "./schema";
 import { formatMoney } from "@/lib/money";
 
 const selectClassName =
@@ -785,20 +785,6 @@ function PaymentRunLine({
         </div>
       ) : null}
 
-      {detail.data?.instruction ? (
-        <InstructionPanel
-          orgId={orgId}
-          paymentRunId={paymentRunId}
-          executionId={detail.data.instruction.payment_run_item_id ? detail.data.instruction.id : ""}
-          instruction={detail.data.instruction}
-          paymentExecutionId={detail.data.outcomes[0]?.payment_execution_id ?? null}
-          onChanged={async () => {
-            await detail.refetch();
-            onChanged();
-          }}
-        />
-      ) : null}
-
       {(detail.data?.outcomes.length ?? 0) > 0 ? (
         <div className="mt-4 rounded-md border p-3">
           <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -854,11 +840,7 @@ function ExecutionControls({
 }: {
   orgId: string;
   paymentRunId: string;
-  execution: NonNullable<
-    ReturnType<typeof usePaymentRunOperations>["data"]
-  >["execution"] extends infer T
-    ? Exclude<T, null | undefined>
-    : never;
+  execution: PaymentExecution;
   executionPassword: string;
   setExecutionPassword: (value: string) => void;
   batchReference: string;
