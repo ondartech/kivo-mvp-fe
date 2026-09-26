@@ -626,7 +626,10 @@ function PaymentRunLine({
   editable: boolean;
   onChanged: () => void;
 }) {
-  const detail = usePaymentRunItemDetail(orgId, paymentRunId, item.id);
+  const [showEvidence, setShowEvidence] = useState(false);
+  const detail = usePaymentRunItemDetail(orgId, paymentRunId, item.id, {
+    enabled: showEvidence,
+  });
   const remove = useRemovePaymentRunItem(orgId, paymentRunId);
   const setDestination = useSetPaymentRunItemDestination(
     orgId,
@@ -735,6 +738,16 @@ function PaymentRunLine({
         ) : null}
       </div>
 
+      <div className="mt-3">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowEvidence((value) => !value)}
+        >
+          {showEvidence ? "Hide source & outcome evidence" : "Source & outcome evidence"}
+        </Button>
+      </div>
+
       {showDestination ? (
         <div className="mt-4 grid gap-3 rounded-md border bg-neutral-50 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -785,6 +798,43 @@ function PaymentRunLine({
         </div>
       ) : null}
 
+      {showEvidence ? (
+        detail.isLoading ? (
+          <div className="mt-4 text-xs text-muted-foreground">
+            Loading source and outcome evidence…
+          </div>
+        ) : detail.isError ? (
+          <div className="mt-4 rounded-md border border-critical/20 bg-critical-subtle p-3 text-xs text-critical">
+            Item evidence is temporarily unavailable.
+          </div>
+        ) : (
+          <>
+            {detail.data ? (
+              <div className="mt-4 grid gap-2 rounded-md border bg-neutral-50 p-3 text-xs sm:grid-cols-3">
+                <div>
+                  <div className="text-muted-foreground">Source</div>
+                  <div className="font-medium">
+                    {humanizePaymentValue(detail.data.obligation.source_type)} ·{" "}
+                    {shortPaymentId(detail.data.obligation.source_id)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Obligation state</div>
+                  <div className="font-medium">
+                    {humanizePaymentValue(detail.data.obligation.status)} ·{" "}
+                    {humanizePaymentValue(detail.data.obligation.control_status)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Reservation</div>
+                  <div className="font-medium">
+                    {detail.data.reservation_status
+                      ? humanizePaymentValue(detail.data.reservation_status)
+                      : "No active reservation"}
+                  </div>
+                </div>
+              </div>
+            ) : null}
       {(detail.data?.outcomes.length ?? 0) > 0 ? (
         <div className="mt-4 rounded-md border p-3">
           <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -825,6 +875,10 @@ function PaymentRunLine({
       ) : null}
     </div>
   );
+          </>
+        )
+      ) : null}
+
 }
 
 function ExecutionControls({
