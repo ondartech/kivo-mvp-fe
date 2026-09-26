@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
@@ -54,6 +54,10 @@ export default function NewPaymentRunPage() {
   const branches = useOperatingBranches(orgId);
   const [branchId, setBranchId] = useState(activeBranchId ?? "");
   const [name, setName] = useState("");
+
+  useEffect(() => {
+    if (!branchId && activeBranchId) setBranchId(activeBranchId);
+  }, [activeBranchId, branchId]);
   const currency = "NGN";
   const [fundingAccountId, setFundingAccountId] = useState("");
   const [executionDate, setExecutionDate] = useState("");
