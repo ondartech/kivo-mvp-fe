@@ -5,7 +5,12 @@ import { MoneyAmount } from "@/components/kivo/money-amount";
 
 /* Public invoice — no Kivo account, minimal PII, mobile-first, ETag, payment CTA */
 
-export default function PublicInvoicePage({ params }: { params: { token: string } }) {
+export default async function PublicInvoicePage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
   const isPaid = false;
   return (
     <div className="min-h-screen bg-background">
@@ -63,7 +68,7 @@ export default function PublicInvoicePage({ params }: { params: { token: string 
           </CardContent>
         </Card>
 
-        <div className="mt-6 text-center text-xs text-muted-foreground">This is a secure Kivo invoice link · Token {params.token.slice(0, 8)}… · Revokable by sender</div>
+        <div className="mt-6 text-center text-xs text-muted-foreground">This is a secure Kivo invoice link · Token {token.slice(0, 8)}… · Revokable by sender</div>
       </div>
     </div>
   );

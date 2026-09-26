@@ -186,10 +186,10 @@ export function saveConversationId(
   );
 }
 
-async function responseJson<T>(
+async function responseJson<TSchema extends z.ZodTypeAny>(
   response: Response,
-  schema: z.ZodType<T>,
-): Promise<T> {
+  schema: TSchema,
+): Promise<z.output<TSchema>> {
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const errorBody =

@@ -1,5 +1,6 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import { useMemo } from "react";
 
 import { MoneyAmount } from "@/components/kivo/money-amount";
@@ -13,13 +14,10 @@ import { useTaxCodes } from "@/features/tax/api";
 import { findTaxCode } from "@/features/tax/document";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 
-export default function InvoiceDetailPage({
-  params,
-}: {
-  params: { invoiceId: string };
-}) {
+export default function InvoiceDetailPage() {
+  const { invoiceId } = useParams<{ invoiceId: string }>();
   const orgId = useActiveOrganizationId() ?? "";
-  const invoice = useInvoice(orgId, params.invoiceId);
+  const invoice = useInvoice(orgId, invoiceId);
   const customer = useCustomer(orgId, invoice.data?.customer_id ?? "");
   const branchAccess = useOperatingBranches(orgId);
   const taxCodes = useTaxCodes(orgId);

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -98,9 +99,9 @@ export default function OAuthCallbackPage() {
               <p className="text-sm text-red-600" role="alert">
                 {error}
               </p>
-              <a href="/login" className="text-sm underline">
+              <Link href="/login" className="text-sm underline">
                 Back to sign in
-              </a>
+              </Link>
             </>
           )}
         </CardContent>

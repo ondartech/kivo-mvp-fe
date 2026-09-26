@@ -28,9 +28,9 @@ export default function LoginPage() {
     try {
       const authorizationUrl = await beginOAuth(provider);
       window.location.href = authorizationUrl;
-    } catch (e: any) {
+    } catch (e: unknown) {
       const providerName = provider === "google" ? "Google" : "Microsoft";
-      setError(e?.message || `Failed to start ${providerName} sign-in`);
+      setError(e instanceof Error ? e.message : `Failed to start ${providerName} sign-in`);
       setOAuthLoading(null);
     }
   };
@@ -56,8 +56,8 @@ export default function LoginPage() {
       if (orgId) router.push(`/${orgId}/dashboard`);
       else if (next) router.push(next);
       else router.push("/onboarding");
-    } catch (e: any) {
-      setError(e?.message || "Sign in failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Sign in failed");
     } finally {
       setLoading(false);
     }
