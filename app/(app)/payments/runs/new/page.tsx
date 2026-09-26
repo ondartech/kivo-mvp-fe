@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { useOperatingBranches } from "@/features/organization/api";
 import {
-  useAddPaymentRunItem,
+  addPaymentRunItemCommand,
   useBankAccounts,
   useCreatePaymentRun,
   usePaymentObligations,
@@ -138,44 +138,7 @@ export default function NewPaymentRunPage() {
     }
   };
 
-  const create = async () => {
-    if (!preview.data) {
-      toast.error("Preview the Payment Run before creating it.");
-      return;
-    }
-    if (preview.data.items.some((item) => !item.eligible)) {
-      toast.error("Resolve ineligible obligations before creating the run.");
-      return;
-    }
-    setCreating(true);
-    let runId: string | null = null;
-    try {
-      const run = await createRun.mutateAsync({
-        input: {
-          name: name.trim() || null,
-          currency,
-          funding_bank_account_id: fundingAccountId,
-          scheduled_execution_date: executionDate || null,
-        },
-        idempotencyKey: crypto.randomUUID(),
-      });
-      runId = run.id;
 
-      for (const item of selectedItems) {
-        const response = await fetch(
-          "/__payment-run-add-item-not-used__",
-        ).catch(() => null);
-        void response;
-        // Hook calls must remain stable; item mutation is delegated to the
-        // dedicated child command component below.
-      }
-    } catch (error) {
-      toast.error(paymentOperationsErrorMessage(error));
-      if (runId) router.push(`/app/payments/runs/${runId}`);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -499,8 +462,6 @@ function CreateRunCommit({
   router: ReturnType<typeof useRouter>;
   createRun: ReturnType<typeof useCreatePaymentRun>;
 }) {
-  const addItem = useAddPaymentRunItem(orgId, "__pending__");
-
   const commit = async () => {
     if (!previewReady || !previewEligible) {
       toast.error("Preview and resolve the Payment Run before creating it.");
@@ -522,29 +483,10 @@ function CreateRunCommit({
       createdRunId = run.id;
 
       for (const item of selectedItems) {
-        const response = await fetchWithAuthForCreatedRun(orgId, run.id, item);
-        if (!response.ok) {
-          const body = await response.json().catch(() => null);
-          const root =
-            body && typeof body === "object"
-              ? (body as Record<string, unknown>)
-              : {};
-          const nested =
-            root.error && typeof root.error === "object"
-              ? (root.error as Record<string, unknown>)
-              : root;
-          throw Object.assign(
-            new Error(
-              typeof nested.message === "string"
-                ? nested.message
-                : `Adding an obligation failed with HTTP ${response.status}`,
-            ),
-            {
-              code:
-                typeof nested.code === "string" ? nested.code : undefined,
-            },
-          );
-        }
+        await addPaymentRunItemCommand(orgId, run.id, {
+          ...item,
+          idempotencyKey: crypto.randomUUID(),
+        });
       }
 
       toast.success("Payment Run created");
@@ -560,7 +502,6 @@ function CreateRunCommit({
     } finally {
       setCreating(false);
     }
-    void addItem;
   };
 
   return (
@@ -581,23 +522,3 @@ function CreateRunCommit({
   );
 }
 
-async function fetchWithAuthForCreatedRun(
-  orgId: string,
-  paymentRunId: string,
-  item: { payment_obligation_id: string; amount: string },
-) {
-  const { fetchWithAuth } = await import("@/lib/api-client");
-  const { env } = await import("@/lib/env");
-  const base = env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
-  return fetchWithAuth(
-    `${base}/api/v1/organizations/${orgId}/payment-runs/${paymentRunId}/items`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Idempotency-Key": crypto.randomUUID(),
-      },
-      body: JSON.stringify(item),
-    },
-  );
-}
