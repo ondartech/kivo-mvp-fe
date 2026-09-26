@@ -54,20 +54,34 @@ export default function NewPaymentRunPage() {
   const branches = useOperatingBranches(orgId);
   const [branchId, setBranchId] = useState(activeBranchId ?? "");
   const [name, setName] = useState("");
-  const [currency, setCurrency] = useState("NGN");
+  const currency = "NGN";
   const [fundingAccountId, setFundingAccountId] = useState("");
   const [executionDate, setExecutionDate] = useState("");
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
 
   const bankAccounts = useBankAccounts(orgId);
-  const obligations = usePaymentObligations(orgId, {
+  const openObligations = usePaymentObligations(orgId, {
     status: "OPEN",
     controlStatus: "AVAILABLE",
     branchId: branchId || null,
     currency,
     limit: 100,
   });
+  const partiallySettledObligations = usePaymentObligations(orgId, {
+    status: "PARTIALLY_SETTLED",
+    controlStatus: "AVAILABLE",
+    branchId: branchId || null,
+    currency,
+    limit: 100,
+  });
+  const availableObligations = useMemo(
+    () => [
+      ...(openObligations.data?.data ?? []),
+      ...(partiallySettledObligations.data?.data ?? []),
+    ],
+    [openObligations.data?.data, partiallySettledObligations.data?.data],
+  );
   const preview = usePreviewPaymentRun(orgId);
   const createRun = useCreatePaymentRun(orgId);
 
@@ -222,23 +236,31 @@ export default function NewPaymentRunPage() {
         </CardContent>
       </Card>
 
-      {obligations.isLoading ? (
+      {(openObligations.isLoading || partiallySettledObligations.isLoading) ? (
         <div className="space-y-2">
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
         </div>
-      ) : obligations.isError ? (
+      ) : (openObligations.isError || partiallySettledObligations.isError) ? (
         <ErrorState
           title="Payment Obligations unavailable"
           description={
-            obligations.error instanceof Error
-              ? obligations.error.message
-              : "Available obligations could not be loaded."
+            openObligations.error instanceof Error
+              ? openObligations.error.message
+              : partiallySettledObligations.error instanceof Error
+                ? partiallySettledObligations.error.message
+                : "Available obligations could not be loaded."
           }
-          retry={{ label: "Retry", onClick: () => void obligations.refetch() }}
+          retry={{
+            label: "Retry",
+            onClick: () => {
+              void openObligations.refetch();
+              void partiallySettledObligations.refetch();
+            },
+          }}
         />
-      ) : (obligations.data?.data.length ?? 0) === 0 ? (
+      ) : availableObligations.length === 0 ? (
         <EmptyState
           title="No available obligations"
           description="There are no open, available Payment Obligations in the selected scope and currency."
@@ -257,7 +279,7 @@ export default function NewPaymentRunPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {obligations.data?.data.map((obligation) => {
+              {availableObligations.map((obligation) => {
                 const checked = obligation.id in selected;
                 return (
                   <TableRow key={obligation.id}>
