@@ -418,3 +418,19 @@ export type PaymentRunPreview = {
   };
   warnings: string[];
 };
+
+
+export type AuditEvent = {
+  id: string;
+  organization_id: string | null;
+  actor_type: string;
+  actor_id: string | null;
+  entity_type: string;
+  entity_id: string | null;
+  action: string;
+  source: string;
+  timestamp: string;
+  request_id: string | null;
+  correlation_id: string | null;
+  created_at: string;
+};
