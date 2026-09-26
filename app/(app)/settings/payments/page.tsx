@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
@@ -36,7 +36,6 @@ import {
 } from "@/features/payments/payment-runs";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
-import { formatMoney } from "@/lib/money";
 
 const selectClassName =
   "mt-1 w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60";
@@ -111,6 +110,10 @@ function PaymentRunTemplateSettings({ orgId }: { orgId: string }) {
   const [offsetDays, setOffsetDays] = useState("0");
   const [fundingAccountId, setFundingAccountId] = useState("");
   const [branchId, setBranchId] = useState(activeBranchId ?? "");
+  useEffect(() => {
+    if (!branchId && activeBranchId) setBranchId(activeBranchId);
+  }, [activeBranchId, branchId]);
+
   const [selectedObligationTypes, setSelectedObligationTypes] = useState<string[]>([
     "VENDOR_PAYABLE",
   ]);
@@ -493,6 +496,10 @@ function PaymentOutcomeWorkflowSettings({ orgId }: { orgId: string }) {
   const [branchId, setBranchId] = useState(activeBranchId ?? "");
   const [sourceType, setSourceType] = useState("PAYABLE");
 
+  useEffect(() => {
+    if (!branchId && activeBranchId) setBranchId(activeBranchId);
+  }, [activeBranchId, branchId]);
+
   const createFollowUpWorkflow = async () => {
     const workflowKey = workflowKeyFromName(name);
     if (!workflowKey || !taskTitle.trim()) {
@@ -612,14 +619,7 @@ function PaymentOutcomeWorkflowSettings({ orgId }: { orgId: string }) {
                 value={sourceType}
                 onChange={(event) => setSourceType(event.target.value)}
               >
-                <option value="">Any registered source</option>
                 <option value="PAYABLE">Payable</option>
-                <option value="REFUND">Refund</option>
-                <option value="EXPENSE_REIMBURSEMENT">
-                  Expense reimbursement
-                </option>
-                <option value="EMPLOYEE_PAYMENT">Employee payment</option>
-                <option value="TAX_REMITTANCE">Tax remittance</option>
               </select>
             </div>
             <div>
