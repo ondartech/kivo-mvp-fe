@@ -9,6 +9,7 @@ import { isUuid } from "@/lib/experience/ask-runtime";
 import type {
   ApprovalPolicy,
   ApprovalRequest,
+  AuditEvent,
   BankAccount,
   PaymentExecution,
   PaymentExecutionQueueItem,
@@ -159,6 +160,27 @@ export function usePaymentRunOperations(orgId: string, paymentRunId: string) {
           { method: "GET" },
         ),
       ),
+    enabled: isUuid(orgId) && isUuid(paymentRunId),
+    staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function usePaymentRunAudit(orgId: string, paymentRunId: string) {
+  return useQuery<{ data: AuditEvent[]; next_cursor: string | null; has_more: boolean }>({
+    queryKey: ["payment-run-audit", orgId, paymentRunId],
+    queryFn: async () => {
+      const suffix = queryString({
+        entity_type: "PaymentRun",
+        entity_id: paymentRunId,
+        limit: 50,
+      });
+      return handleRes(
+        await fetchWithAuth(`${baseUrl(orgId)}/audit-events${suffix}`, {
+          method: "GET",
+        }),
+      );
+    },
     enabled: isUuid(orgId) && isUuid(paymentRunId),
     staleTime: 10_000,
     retry: 1,
@@ -440,6 +462,45 @@ export function useAddPaymentRunItem(orgId: string, paymentRunId: string) {
       ),
     onSuccess: async () => {
       await invalidatePayments(queryClient, orgId);
+    },
+  });
+}
+
+export function useSetPaymentRunItemDestination(
+  orgId: string,
+  paymentRunId: string,
+  itemId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      type?: "BANK_ACCOUNT";
+      bank_code: string;
+      bank_name: string;
+      account_number: string;
+      account_name: string;
+      currency: string;
+      source?: "MANUAL";
+    }) =>
+      handleRes<PaymentRun>(
+        await fetchWithAuth(
+          `${baseUrl(orgId)}/payment-runs/${paymentRunId}/items/${itemId}/destination`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: input.type ?? "BANK_ACCOUNT",
+              source: input.source ?? "MANUAL",
+              ...input,
+            }),
+          },
+        ),
+      ),
+    onSuccess: async () => {
+      await invalidatePayments(queryClient, orgId);
+      await queryClient.invalidateQueries({
+        queryKey: ["payment-run-audit", orgId, paymentRunId],
+      });
     },
   });
 }
