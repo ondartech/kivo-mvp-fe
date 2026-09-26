@@ -33,6 +33,8 @@ import {
   type PaymentRun,
 } from "./schema";
 
+const nullableStringSchema = z.string().nullable();
+
 function baseUrl(orgId: string): string {
   return `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/v1/organizations/${orgId}`;
 }
@@ -261,6 +263,7 @@ export function usePaymentRunItemDetail(
   orgId: string,
   paymentRunId: string,
   itemId: string,
+  opts: { enabled?: boolean } = {},
 ) {
   return useQuery({
     queryKey: ["payment-run", orgId, paymentRunId, "item", itemId],
@@ -275,7 +278,10 @@ export function usePaymentRunItemDetail(
       );
     },
     enabled:
-      isOrganizationId(orgId) && Boolean(paymentRunId) && Boolean(itemId),
+      isOrganizationId(orgId) &&
+      Boolean(paymentRunId) &&
+      Boolean(itemId) &&
+      (opts.enabled ?? true),
   });
 }
 
@@ -676,8 +682,6 @@ export function useExecutionStepUp(orgId: string, paymentRunId: string) {
     },
   });
 }
-
-const nullableStringSchema = z.string().nullable();
 
 export function useSubmitPaymentExecution(
   orgId: string,
