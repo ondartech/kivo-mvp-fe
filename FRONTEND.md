@@ -385,6 +385,7 @@ The route map should reflect the information architecture (`DESIGN.md v2.1 §17/
 /quotes/[quoteId]          // Accepted → Create Invoice
 /receivables
 /payments                            // PAYRUN-FE-001 Payment Operations command center
+/payments/obligations                // normalized obligation register + hold/release controls
 /payments/runs                       // Payment Run lifecycle inventory + archive visibility
 /payments/runs/new                   // server-previewed obligation selection + draft reservation
 /payments/runs/[paymentRunId]        // destinations → approval → execution → reconciliation → outcomes
@@ -871,7 +872,8 @@ Rules:
   before submission.
 - Approval and execution are separate consequential actions. Step-up tokens are requested
   and forwarded only to the matching backend authority boundary.
-- CSV/bank-file export means dispatch only; it must never render as payment settlement.
+- CSV export means dispatch only; it must never render as payment settlement. BANK_FILE_EXPORT
+  is intentionally not exposed until a verified bank-file adapter exists.
 - Reconciliation records explicit evidence for IN_TRANSIT, SETTLED or NOT_SETTLED.
 - FINANCE_POSTING_FAILED is not reconciled again; the existing settlement evidence remains
   authoritative while Finance recovery is handled separately.
