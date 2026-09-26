@@ -358,6 +358,53 @@ export function useCreatePaymentRun(orgId: string) {
   });
 }
 
+export function useBuildPaymentRun(orgId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      run: {
+        name?: string;
+        currency: string;
+        funding_bank_account_id: string;
+        scheduled_execution_date?: string;
+      };
+      items: Array<{ payment_obligation_id: string; amount: string }>;
+    }) => {
+      let current = await handleRes<PaymentRun>(
+        await fetchWithAuth(`${baseUrl(orgId)}/payment-runs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input.run),
+        }),
+      );
+
+      for (const item of input.items) {
+        try {
+          current = await handleRes<PaymentRun>(
+            await fetchWithAuth(
+              `${baseUrl(orgId)}/payment-runs/${current.id}/items`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(item),
+              },
+            ),
+          );
+        } catch (error) {
+          throw Object.assign(
+            error instanceof Error ? error : new Error("Payment Run item could not be added."),
+            { paymentRunId: current.id },
+          );
+        }
+      }
+      return current;
+    },
+    onSuccess: async () => {
+      await invalidatePayments(queryClient, orgId);
+    },
+  });
+}
+
 export function useAddPaymentRunItem(orgId: string, paymentRunId: string) {
   const queryClient = useQueryClient();
   return useMutation({
