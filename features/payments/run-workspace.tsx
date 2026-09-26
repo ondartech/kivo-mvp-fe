@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   useApprovalStepUp,
   useArchivePaymentRun,
+  useBankAccounts,
   useCancelPaymentRun,
   useCompletePaymentRunWithExceptions,
   useDecideApproval,
@@ -24,10 +25,12 @@ import {
   usePreparePaymentExecution,
   useReconcileInstruction,
   useRecordInstructionResult,
+  useRetryPaymentInstruction,
   useRemovePaymentRunItem,
   useSetPaymentRunItemDestination,
   useSubmitPaymentExecution,
   useSubmitPaymentRun,
+  useUpdatePaymentRun,
   useUnarchivePaymentRun,
 } from "./api";
 import {
@@ -48,7 +51,12 @@ import {
   reconciliationEvidenceTypes,
   shortPaymentId,
 } from "./payment-runs";
-import type { PaymentExecution, PaymentInstruction, PaymentRunItem } from "./schema";
+import type {
+  PaymentExecution,
+  PaymentInstruction,
+  PaymentRun,
+  PaymentRunItem,
+} from "./schema";
 import { formatMoney } from "@/lib/money";
 
 const selectClassName =
@@ -314,6 +322,15 @@ export function PaymentRunWorkspace({
             </div>
           </CardContent>
         </Card>
+      ) : null}
+
+      {canEditPaymentRun(run) ? (
+        <DraftRunSettings
+          orgId={orgId}
+          paymentRunId={paymentRunId}
+          run={run}
+          onChanged={() => void operations.refetch()}
+        />
       ) : null}
 
       <Card>
@@ -610,6 +627,104 @@ export function PaymentRunWorkspace({
         </Card>
       ) : null}
     </div>
+  );
+}
+
+function DraftRunSettings({
+  orgId,
+  paymentRunId,
+  run,
+  onChanged,
+}: {
+  orgId: string;
+  paymentRunId: string;
+  run: PaymentRun;
+  onChanged: () => void;
+}) {
+  const bankAccounts = useBankAccounts(orgId);
+  const update = useUpdatePaymentRun(orgId, paymentRunId);
+  const [name, setName] = useState(run.name ?? "");
+  const [executionDate, setExecutionDate] = useState(
+    run.scheduled_execution_date ?? "",
+  );
+  const [fundingAccountId, setFundingAccountId] = useState(
+    run.funding_bank_account_id,
+  );
+
+  const eligibleAccounts = (bankAccounts.data ?? []).filter(
+    (account) =>
+      account.status === "ACTIVE" && account.currency === run.currency,
+  );
+
+  const save = async () => {
+    try {
+      await update.mutateAsync({
+        name: name.trim() || null,
+        funding_bank_account_id: fundingAccountId,
+        scheduled_execution_date: executionDate || null,
+      });
+      toast.success("Draft Payment Run updated");
+      onChanged();
+    } catch (error) {
+      toast.error(paymentOperationsErrorMessage(error));
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">
+            Edit draft settings
+          </summary>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div>
+              <Label htmlFor="draft-run-name">Name</Label>
+              <Input
+                id="draft-run-name"
+                className="mt-1"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="draft-run-account">Funding account</Label>
+              <select
+                id="draft-run-account"
+                className={selectClassName}
+                value={fundingAccountId}
+                onChange={(event) => setFundingAccountId(event.target.value)}
+              >
+                {eligibleAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.bank_name} · {account.account_number_masked}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="draft-run-date">Planned execution date</Label>
+              <Input
+                id="draft-run-date"
+                className="mt-1"
+                type="date"
+                value={executionDate}
+                onChange={(event) => setExecutionDate(event.target.value)}
+              />
+            </div>
+            <div className="md:col-span-3">
+              <Button
+                size="sm"
+                disabled={update.isPending}
+                onClick={() => void save()}
+              >
+                {update.isPending ? "Saving…" : "Save draft settings"}
+              </Button>
+            </div>
+          </div>
+        </details>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1088,6 +1203,13 @@ function InstructionPanel({
     paymentExecutionId ?? executionId,
     instruction.id,
   );
+  const retry = useRetryPaymentInstruction(
+    orgId,
+    paymentRunId,
+    paymentExecutionId ?? executionId,
+    instruction.id,
+  );
+  const retryStepUp = useExecutionStepUp(orgId, paymentRunId);
   const [resultStatus, setResultStatus] = useState<
     "DISPATCHED" | "ACCEPTED" | "IN_TRANSIT" | "FAILED" | "REJECTED" | "OUTCOME_UNKNOWN"
   >("DISPATCHED");
@@ -1101,6 +1223,8 @@ function InstructionPanel({
     useState("BANK_STATEMENT_DEBIT");
   const [reconciliationReference, setReconciliationReference] = useState("");
   const [settlementReference, setSettlementReference] = useState("");
+  const [retryReference, setRetryReference] = useState("");
+  const [retryPassword, setRetryPassword] = useState("");
 
   const resultEvidence = instructionResultEvidenceTypes(resultStatus);
   const reconciliationEvidence = reconciliationEvidenceTypes(
@@ -1145,6 +1269,35 @@ function InstructionPanel({
         idempotencyKey: crypto.randomUUID(),
       });
       toast.success("Instruction reconciled");
+      await onChanged();
+    } catch (error) {
+      toast.error(paymentOperationsErrorMessage(error));
+    }
+  };
+
+  const retryInstruction = async () => {
+    if (!retryReference.trim()) {
+      toast.error("Add the new external reference before retrying.");
+      return;
+    }
+    try {
+      let stepUpToken: string | null = null;
+      if (retryPassword.trim()) {
+        const stepped = await retryStepUp.mutateAsync({
+          password: retryPassword,
+          instructionId: instruction.id,
+        });
+        if (stepped.required) stepUpToken = stepped.grant_token;
+      }
+      await retry.mutateAsync({
+        externalReference: retryReference.trim(),
+        evidence: {},
+        idempotencyKey: crypto.randomUUID(),
+        stepUpToken,
+      });
+      setRetryReference("");
+      setRetryPassword("");
+      toast.success("Payment Instruction retry created");
       await onChanged();
     } catch (error) {
       toast.error(paymentOperationsErrorMessage(error));
@@ -1347,6 +1500,52 @@ function InstructionPanel({
             </div>
           </div>
         </details>
+      ) : null}
+
+      {["FAILED", "REJECTED"].includes(instruction.status) ? (
+        <details className="mt-3 rounded-md border border-warning/30 p-3">
+          <summary className="cursor-pointer text-sm font-medium">
+            Retry definitively failed instruction
+          </summary>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div>
+              <Label>New external reference</Label>
+              <Input
+                className="mt-1"
+                value={retryReference}
+                onChange={(event) => setRetryReference(event.target.value)}
+                placeholder="New bank/provider/operator reference"
+              />
+            </div>
+            <div>
+              <Label>Re-authentication password</Label>
+              <Input
+                className="mt-1"
+                type="password"
+                autoComplete="current-password"
+                value={retryPassword}
+                onChange={(event) => setRetryPassword(event.target.value)}
+                placeholder="Required if retry risk demands step-up"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Button
+                size="sm"
+                disabled={retry.isPending || retryStepUp.isPending}
+                onClick={() => void retryInstruction()}
+              >
+                {retry.isPending ? "Retrying…" : "Retry instruction"}
+              </Button>
+            </div>
+          </div>
+        </details>
+      ) : null}
+
+      {instruction.status === "OUTCOME_UNKNOWN" ? (
+        <div className="mt-3 rounded-md border border-warning/30 bg-warning-subtle p-3 text-xs">
+          Unknown outcome cannot be retried. Reconcile or verify the existing
+          attempt first so Ondar cannot create a duplicate payment.
+        </div>
       ) : null}
 
       {instruction.reconciliations.length ? (
