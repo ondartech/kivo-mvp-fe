@@ -391,3 +391,30 @@ export type ApprovalPolicy = {
   created_at: string;
   updated_at: string | null;
 };
+
+
+export type PaymentRunPreview = {
+  currency: string;
+  total_amount: string;
+  item_count: number;
+  branch_ids: string[];
+  funding_account_valid: boolean;
+  items: Array<{
+    payment_obligation_id: string;
+    branch_id: string | null;
+    requested_amount: string;
+    available_amount: string;
+    eligible: boolean;
+    beneficiary_ready: boolean;
+    warnings: string[];
+  }>;
+  approval_path: {
+    required: boolean;
+    policy_id: string | null;
+    required_role: string | null;
+    required_approvals: number | null;
+    control_mode: string | null;
+    threshold: string | null;
+  };
+  warnings: string[];
+};
