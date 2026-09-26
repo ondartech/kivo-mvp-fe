@@ -1165,7 +1165,6 @@ function ExecutionControls({
               orgId={orgId}
               paymentRunId={paymentRunId}
               executionId={execution.id}
-              paymentExecutionId={execution.id}
               instruction={instruction}
               onChanged={onChanged}
             />
@@ -1180,33 +1179,31 @@ function InstructionPanel({
   orgId,
   paymentRunId,
   executionId,
-  paymentExecutionId,
   instruction,
   onChanged,
 }: {
   orgId: string;
   paymentRunId: string;
   executionId: string;
-  paymentExecutionId: string | null;
   instruction: PaymentInstruction;
   onChanged: () => void | Promise<void>;
 }) {
   const result = useRecordInstructionResult(
     orgId,
     paymentRunId,
-    paymentExecutionId ?? executionId,
+    executionId,
     instruction.id,
   );
   const reconcile = useReconcileInstruction(
     orgId,
     paymentRunId,
-    paymentExecutionId ?? executionId,
+    executionId,
     instruction.id,
   );
   const retry = useRetryPaymentInstruction(
     orgId,
     paymentRunId,
-    paymentExecutionId ?? executionId,
+    executionId,
     instruction.id,
   );
   const retryStepUp = useExecutionStepUp(orgId, paymentRunId);
