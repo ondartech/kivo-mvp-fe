@@ -144,6 +144,9 @@ export default function PaymentsPage() {
               <Link href="/app/settings/payments">Configure</Link>
             </Button>
             <Button variant="outline" asChild>
+              <Link href="/app/payments/obligations">Obligations</Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link href="/app/payments/runs">Payment Runs</Link>
             </Button>
             <Button asChild>
