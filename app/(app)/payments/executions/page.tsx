@@ -150,9 +150,10 @@ export default function PaymentExecutionsPage() {
 
       <Card className="border-dashed">
         <CardContent className="p-4 text-xs text-muted-foreground">
-          CSV and bank-file export are dispatch mechanisms, not settlement evidence.
-          A released file can remain dispatched without an acceptance signal; the
-          reconciliation queue is where authoritative outcome evidence is recorded.
+          CSV export is a dispatch mechanism, not settlement evidence. A released
+          export can remain dispatched without an acceptance signal; reconciliation is
+          where authoritative outcome evidence is recorded. Bank-file export remains
+          hidden until a verified backend adapter is enabled.
         </CardContent>
       </Card>
     </div>
