@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   isSafeAppHref,
   isWorkspaceLikeHref,
-  readPinnedWorkspaces,
   readRecentWorkspaces,
   recordRecentWorkspace,
   togglePinnedWorkspace,
@@ -14,6 +13,10 @@ const organizationId = "11111111-1111-4111-8111-111111111111";
 
 function installStorage() {
   const store = new Map<string, string>();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: globalThis,
+  });
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
     value: {
