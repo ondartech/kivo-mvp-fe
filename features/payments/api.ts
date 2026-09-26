@@ -399,6 +399,30 @@ export function useCreatePaymentRun(orgId: string) {
   });
 }
 
+export async function addPaymentRunItemCommand(
+  orgId: string,
+  paymentRunId: string,
+  payload: {
+    payment_obligation_id: string;
+    amount: string;
+    idempotencyKey: string;
+  },
+) {
+  requireOrganizationId(orgId);
+  const response = await fetchWithAuth(
+    `${baseUrl(orgId)}/payment-runs/${paymentRunId}/items`,
+    {
+      method: "POST",
+      headers: jsonHeaders(payload.idempotencyKey),
+      body: JSON.stringify({
+        payment_obligation_id: payload.payment_obligation_id,
+        amount: payload.amount,
+      }),
+    },
+  );
+  return parseResponse(response, (value) => paymentRunSchema.parse(value));
+}
+
 export function useAddPaymentRunItem(orgId: string, paymentRunId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -406,20 +430,7 @@ export function useAddPaymentRunItem(orgId: string, paymentRunId: string) {
       payment_obligation_id: string;
       amount: string;
       idempotencyKey: string;
-    }) => {
-      const response = await fetchWithAuth(
-        `${baseUrl(orgId)}/payment-runs/${paymentRunId}/items`,
-        {
-          method: "POST",
-          headers: jsonHeaders(payload.idempotencyKey),
-          body: JSON.stringify({
-            payment_obligation_id: payload.payment_obligation_id,
-            amount: payload.amount,
-          }),
-        },
-      );
-      return parseResponse(response, (value) => paymentRunSchema.parse(value));
-    },
+    }) => addPaymentRunItemCommand(orgId, paymentRunId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["payment-run", orgId, paymentRunId],
