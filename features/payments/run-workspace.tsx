@@ -120,8 +120,14 @@ export function PaymentRunWorkspace({
   const [reason, setReason] = useState("");
   const [approvalPassword, setApprovalPassword] = useState("");
   const [approvalComment, setApprovalComment] = useState("");
+  const [approvalReasonCode, setApprovalReasonCode] = useState(
+    "APPROVED_WITHIN_POLICY",
+  );
+  const [rejectionReasonCode, setRejectionReasonCode] = useState(
+    "BENEFICIARY_REVIEW_REQUIRED",
+  );
   const [executionMethod, setExecutionMethod] = useState<
-    "MANUAL" | "CSV_EXPORT" | "BANK_FILE_EXPORT"
+    "MANUAL" | "CSV_EXPORT"
   >("MANUAL");
   const [executionPassword, setExecutionPassword] = useState("");
   const [batchReference, setBatchReference] = useState("");
@@ -213,7 +219,8 @@ export function PaymentRunWorkspace({
         approvalRequestId: approval.id,
         decision,
         comment: approvalComment.trim() || null,
-        reasonCode: decision === "REJECT" ? "OPERATOR_REJECTED" : null,
+        reasonCode:
+          decision === "APPROVE" ? approvalReasonCode : rejectionReasonCode,
         idempotencyKey: crypto.randomUUID(),
         stepUpToken,
       });
@@ -457,6 +464,61 @@ export function PaymentRunWorkspace({
                     placeholder="Required when step-up control applies"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="approval-reason-code">
+                    Approval reason code
+                  </Label>
+                  <select
+                    id="approval-reason-code"
+                    className={selectClassName}
+                    value={approvalReasonCode}
+                    onChange={(event) =>
+                      setApprovalReasonCode(event.target.value)
+                    }
+                  >
+                    <option value="APPROVED_WITHIN_POLICY">
+                      Approved within policy
+                    </option>
+                    <option value="APPROVED_EXCEPTION_REVIEWED">
+                      Exception reviewed and approved
+                    </option>
+                    <option value="APPROVED_AFTER_VERIFICATION">
+                      Approved after verification
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="rejection-reason-code">
+                    Rejection reason code
+                  </Label>
+                  <select
+                    id="rejection-reason-code"
+                    className={selectClassName}
+                    value={rejectionReasonCode}
+                    onChange={(event) =>
+                      setRejectionReasonCode(event.target.value)
+                    }
+                  >
+                    <option value="BENEFICIARY_REVIEW_REQUIRED">
+                      Beneficiary review required
+                    </option>
+                    <option value="INSUFFICIENT_SUPPORTING_EVIDENCE">
+                      Insufficient supporting evidence
+                    </option>
+                    <option value="POLICY_EXCEPTION_NOT_APPROVED">
+                      Policy exception not approved
+                    </option>
+                    <option value="FUNDING_ACCOUNT_INVALID">
+                      Funding account invalid
+                    </option>
+                    <option value="OBLIGATION_OR_RESERVATION_STALE">
+                      Obligation or reservation stale
+                    </option>
+                    <option value="DUPLICATE_OR_INVALID_PAYMENT">
+                      Duplicate or invalid payment
+                    </option>
+                  </select>
+                </div>
                 <div className="flex gap-2">
                   <Button
                     disabled={decide.isPending || approvalStepUp.isPending}
@@ -518,16 +580,12 @@ export function PaymentRunWorkspace({
                     value={executionMethod}
                     onChange={(event) =>
                       setExecutionMethod(
-                        event.target.value as
-                          | "MANUAL"
-                          | "CSV_EXPORT"
-                          | "BANK_FILE_EXPORT",
+                        event.target.value as "MANUAL" | "CSV_EXPORT",
                       )
                     }
                   >
                     <option value="MANUAL">Manual</option>
                     <option value="CSV_EXPORT">CSV export</option>
-                    <option value="BANK_FILE_EXPORT">Bank file export</option>
                   </select>
                 </div>
                 <Button
