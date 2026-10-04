@@ -102,7 +102,7 @@ export default function PaymentsPage() {
     );
   }
 
-  if (organization.isLoading || !currencyValid) {
+  if (organization.isLoading || !currencyValid || summary.isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 w-full" />
@@ -130,7 +130,7 @@ export default function PaymentsPage() {
     );
   }
 
-  if (summary.isLoading) {
+  if (summary.isError) {
     return (
       <ErrorState
         title="Payment Operations unavailable"
