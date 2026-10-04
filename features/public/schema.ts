@@ -1,3 +1,4 @@
+import { z } from "zod";
 
 export const publicInvoiceLineSchema = z.object({
   description: z.string(),
@@ -32,8 +33,6 @@ export const publicInvoiceSchema = z.object({
   issued_at: z.string().nullable().optional(),
   created_at: z.string(),
 });
-
-import { z } from "zod";
 
 export const publicQuoteLineSchema = z.object({
   description: z.string(),
