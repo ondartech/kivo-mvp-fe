@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/kivo/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -29,6 +30,7 @@ import {
 } from "@/features/payments/payment-runs";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 import { formatMoney } from "@/lib/money";
 
 function MetricCard({
@@ -64,18 +66,28 @@ function MetricCard({
 export default function PaymentsPage() {
   const orgId = useActiveOrganizationId() ?? "";
   const branchId = useActiveBranchId();
+  const {
+    currency,
+    setCurrency,
+    currencyValid,
+    organization,
+  } = useOrganizationCurrencySelection(orgId);
   const summary = usePaymentOperationsSummary(orgId, {
-    currency: "NGN",
+    currency,
     branchId,
   });
-  const runs = usePaymentRuns(orgId, { archiveState: "active", limit: 8 });
+  const runs = usePaymentRuns(orgId, {
+    archiveState: "active",
+    currency: currencyValid ? currency : null,
+    limit: 8,
+  });
   const executions = usePaymentExecutionQueue(orgId, {
-    currency: "NGN",
+    currency,
     branchId,
     limit: 8,
   });
   const reconciliation = usePaymentReconciliationQueue(orgId, {
-    currency: "NGN",
+    currency,
     branchId,
     attentionOnly: true,
     limit: 8,
@@ -90,7 +102,7 @@ export default function PaymentsPage() {
     );
   }
 
-  if (summary.isLoading) {
+  if (organization.isLoading || !currencyValid) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 w-full" />
@@ -104,7 +116,21 @@ export default function PaymentsPage() {
     );
   }
 
-  if (summary.isError) {
+  if (organization.isError) {
+    return (
+      <ErrorState
+        title="Currency context unavailable"
+        description={
+          organization.error instanceof Error
+            ? organization.error.message
+            : "The organization currency could not be loaded."
+        }
+        retry={{ label: "Retry", onClick: () => void organization.refetch() }}
+      />
+    );
+  }
+
+  if (summary.isLoading) {
     return (
       <ErrorState
         title="Payment Operations unavailable"
@@ -139,7 +165,14 @@ export default function PaymentsPage() {
         title="Payment Operations"
         description="Control what is owed, group obligations into Payment Runs, release approved money movement, and reconcile outcomes without losing the source obligation."
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              aria-label="Payment Operations currency"
+              value={currency}
+              maxLength={3}
+              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+              className="h-9 w-24 uppercase"
+            />
             <Button variant="outline" asChild>
               <Link href="/app/settings/payments">Configure</Link>
             </Button>
@@ -152,7 +185,7 @@ export default function PaymentsPage() {
             <Button asChild>
               <Link href="/app/payments/runs/new">New Payment Run</Link>
             </Button>
-          </>
+          </div>
         }
       />
 
