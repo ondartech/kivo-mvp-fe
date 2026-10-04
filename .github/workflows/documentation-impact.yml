@@ -1,0 +1,213 @@
+name: Documentation impact
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-impact-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate documentation impact declaration
+        id: validate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            const START = '<!-- ondar-documentation-impact:start -->';
+            const END = '<!-- ondar-documentation-impact:end -->';
+            const validatorVersion = 'DOCS-022/v1';
+            const problems = [];
+            let declaration = null;
+
+            function add(message) {
+              problems.push(message);
+            }
+
+            const start = body.indexOf(START);
+            const end = body.indexOf(END);
+            if (start === -1 || end === -1 || end <= start) {
+              add('PR body must contain the documentation-impact start/end markers.');
+            } else {
+              let block = body.slice(start + START.length, end).trim();
+              const fenced = block.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+              if (fenced) block = fenced[1].trim();
+              try {
+                declaration = JSON.parse(block);
+              } catch (error) {
+                add(`documentation-impact block is not valid JSON: ${error.message}`);
+              }
+            }
+
+            const required = [
+              'schema_version', 'classification', 'change_types', 'canonical_pages',
+              'release_note', 'openapi_impact', 'learning_impact',
+              'regulatory_impact', 'rationale', 'source_authority'
+            ];
+            const allowed = new Set(required);
+            const enums = {
+              classification: new Set(['no_public_impact','existing_docs_update','new_docs_required','deprecation_migration']),
+              release_note: new Set(['required','not_required','pending']),
+              openapi_impact: new Set(['none','additive','behavioral','breaking','internal_only']),
+              learning_impact: new Set(['none','review','update']),
+              regulatory_impact: new Set(['none','review','update']),
+              change_types: new Set(['product','api','regulatory','operator_control','ui','internal_only'])
+            };
+
+            if (declaration && (typeof declaration !== 'object' || Array.isArray(declaration))) {
+              add('declaration must be a JSON object.');
+              declaration = null;
+            }
+
+            if (declaration) {
+              for (const field of required) {
+                if (!(field in declaration)) add(`missing required field: ${field}`);
+              }
+              for (const field of Object.keys(declaration)) {
+                if (!allowed.has(field)) add(`unknown field: ${field}`);
+              }
+
+              if (declaration.schema_version !== 1) add('schema_version must be 1');
+
+              for (const field of ['classification','release_note','openapi_impact','learning_impact','regulatory_impact']) {
+                if (!enums[field].has(declaration[field])) {
+                  add(`${field} must be one of: ${[...enums[field]].sort().join(', ')}`);
+                }
+              }
+
+              const changeTypes = declaration.change_types;
+              if (!Array.isArray(changeTypes) || changeTypes.length === 0) {
+                add('change_types must be a non-empty array');
+              } else {
+                if (new Set(changeTypes).size !== changeTypes.length) add('change_types must not contain duplicates');
+                for (const value of changeTypes) {
+                  if (!enums.change_types.has(value)) add(`change_types contains unsupported value: ${JSON.stringify(value)}`);
+                }
+                if (changeTypes.includes('internal_only') && changeTypes.length > 1) {
+                  add('internal_only cannot be combined with externally observable change types');
+                }
+              }
+
+              const pages = declaration.canonical_pages;
+              const routePattern = /^\/[A-Za-z0-9_./-]+$/;
+              if (!Array.isArray(pages)) {
+                add('canonical_pages must be an array');
+              } else {
+                if (new Set(pages).size !== pages.length) add('canonical_pages must not contain duplicates');
+                for (const route of pages) {
+                  if (typeof route !== 'string' || !routePattern.test(route)) {
+                    add(`canonical_pages contains invalid extensionless route: ${JSON.stringify(route)}`);
+                  } else if (/\.(md|mdx)$/i.test(route)) {
+                    add(`canonical page must be extensionless: ${route}`);
+                  }
+                }
+              }
+
+              const docsRequired = new Set(['existing_docs_update','new_docs_required','deprecation_migration']);
+              if (docsRequired.has(declaration.classification) && (!Array.isArray(pages) || pages.length === 0)) {
+                add(`${declaration.classification} requires at least one canonical page`);
+              }
+
+              for (const field of ['rationale','source_authority']) {
+                if (typeof declaration[field] !== 'string' || declaration[field].trim() === '') {
+                  add(`${field} must be a non-empty string`);
+                }
+              }
+
+              if (declaration.classification === 'no_public_impact') {
+                if (declaration.release_note === 'required') {
+                  add('no_public_impact cannot simultaneously require a public release note');
+                }
+                if (['additive','behavioral','breaking'].includes(declaration.openapi_impact)) {
+                  add('no_public_impact cannot declare an external OpenAPI compatibility change');
+                }
+              }
+
+              if (Array.isArray(changeTypes) && changeTypes.includes('api') && ['none','internal_only'].includes(declaration.openapi_impact)) {
+                add('api change type requires additive, behavioral, or breaking openapi_impact');
+              }
+              if (['additive','behavioral','breaking'].includes(declaration.openapi_impact) && (!Array.isArray(changeTypes) || !changeTypes.includes('api'))) {
+                add('external OpenAPI impact requires api in change_types');
+              }
+
+              if (!pr.draft) {
+                if (declaration.release_note === 'pending') {
+                  add('release_note cannot remain pending when a PR is ready for review');
+                }
+                if (declaration.regulatory_impact === 'review') {
+                  add('regulatory_impact=review must be resolved before a PR is ready for review');
+                }
+              }
+            }
+
+            let status = 'valid';
+            if (problems.length > 0) status = pr.draft ? 'draft_unresolved' : 'invalid';
+
+            const evidence = {
+              evidence_schema_version: 1,
+              validator_version: validatorVersion,
+              repository: context.payload.repository.full_name,
+              pull_request_number: pr.number,
+              pull_request_url: pr.html_url,
+              head_sha: pr.head.sha,
+              base_ref: pr.base.ref,
+              draft: !!pr.draft,
+              status,
+              release_ready: !pr.draft && problems.length === 0,
+              declaration,
+              problems
+            };
+            fs.writeFileSync('documentation-impact-evidence.json', JSON.stringify(evidence, null, 2) + '\n');
+
+            if (problems.length > 0) {
+              for (const problem of problems) {
+                if (pr.draft) core.warning(problem); else core.error(problem);
+              }
+              if (!pr.draft) core.setFailed(`Documentation-impact validation failed with ${problems.length} issue(s).`);
+            } else {
+              core.info('Documentation-impact validation passed.');
+            }
+
+      - name: Upload documentation impact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-impact-pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: documentation-impact-evidence.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish evidence summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('documentation-impact-evidence.json')) {
+              core.warning('No documentation-impact evidence file was produced.');
+              return;
+            }
+            const evidence = JSON.parse(fs.readFileSync('documentation-impact-evidence.json', 'utf8'));
+            await core.summary
+              .addHeading('Documentation impact evidence')
+              .addTable([
+                [{data: 'Field', header: true}, {data: 'Value', header: true}],
+                ['Status', evidence.status],
+                ['Release ready', String(evidence.release_ready)],
+                ['Head SHA', evidence.head_sha],
+                ['Validator', evidence.validator_version]
+              ])
+              .addHeading('Resolved declaration', 3)
+              .addCodeBlock(JSON.stringify(evidence.declaration, null, 2), 'json')
+              .addHeading('Unresolved findings', 3)
+              .addList(evidence.problems.length ? evidence.problems : ['None'])
+              .write();
