@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useCatalogItems } from "@/features/catalog/api";
 import { useCustomers } from "@/features/customers/api";
-import { useOperatingBranches } from "@/features/organization/api";
+import { useOperatingBranches, useOrganization } from "@/features/organization/api";
 import { useProjects } from "@/features/projects/api";
 import {
   type QuoteArchetype,
@@ -66,6 +66,7 @@ export default function NewQuotePage() {
   const activeBranchId = useActiveBranchId();
 
   const branchAccess = useOperatingBranches(orgId);
+  const organization = useOrganization(orgId);
   const customers = useCustomers(orgId, {
     status: "ACTIVE",
     limit: 100,
@@ -91,7 +92,7 @@ export default function NewQuotePage() {
   const [customerId, setCustomerId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [archetype, setArchetype] = useState<QuoteArchetype | "">("");
-  const [currency, setCurrency] = useState("NGN");
+  const [currency, setCurrency] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
@@ -109,6 +110,16 @@ export default function NewQuotePage() {
   });
   const preview = useCalculateQuotePreview(orgId);
   const createQuote = useCreateQuote(orgId);
+
+  useEffect(() => {
+    setCurrency("");
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!currency && organization.data?.default_currency) {
+      setCurrency(organization.data.default_currency);
+    }
+  }, [currency, organization.data?.default_currency]);
 
   useEffect(() => {
     if (!branchAccess.data) return;
@@ -441,6 +452,7 @@ export default function NewQuotePage() {
                   <Input
                     id="quote-currency"
                     value={currency}
+                    placeholder="USD"
                     onChange={(event) => {
                       setCurrency(event.target.value.toUpperCase());
                       preview.reset();
