@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { MoneyAmount } from "@/components/kivo/money-amount";
@@ -8,13 +8,15 @@ import { PageHeader } from "@/components/kivo/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   useReceivables,
   useReceivablesAging,
   useReceivablesSummary,
 } from "@/features/receivables/api";
 import { resolveReceivableReadScope } from "@/features/receivables/branching";
-import { useOperatingBranches } from "@/features/organization/api";
+import { useFinanceProfile } from "@/features/finance-explorer/api";
+import { useOperatingBranches, useOrganization } from "@/features/organization/api";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 
@@ -24,8 +26,28 @@ export default function ReceivablesPage() {
   const orgId = useActiveOrganizationId() ?? "";
   const activeBranchId = useActiveBranchId();
   const branchAccess = useOperatingBranches(orgId);
+  const organization = useOrganization(orgId);
+  const financeProfile = useFinanceProfile(orgId);
   const [collectionState, setCollectionState] = useState<CollectionState>(null);
+  const [currency, setCurrency] = useState("");
 
+  useEffect(() => {
+    setCurrency("");
+  }, [orgId]);
+
+  useEffect(() => {
+    if (currency) return;
+    const configured =
+      financeProfile.data?.default_presentation_currency ??
+      organization.data?.default_currency;
+    if (configured) setCurrency(configured);
+  }, [
+    currency,
+    financeProfile.data?.default_presentation_currency,
+    organization.data?.default_currency,
+  ]);
+
+  const currencyValid = /^[A-Z]{3}$/.test(currency);
   const scope = resolveReceivableReadScope(branchAccess.data, activeBranchId);
   const branchById = useMemo(
     () =>
@@ -44,19 +66,19 @@ export default function ReceivablesPage() {
   const receivables = useReceivables(orgId, {
     branchId: scope.branchId,
     collectionState,
-    currency: "NGN",
+    currency,
     limit: 50,
-    enabled: scope.ready,
+    enabled: scope.ready && currencyValid,
   });
   const summary = useReceivablesSummary(orgId, {
     branchId: scope.branchId,
-    currency: "NGN",
-    enabled: scope.ready,
+    currency,
+    enabled: scope.ready && currencyValid,
   });
   const aging = useReceivablesAging(orgId, {
     branchId: scope.branchId,
-    currency: "NGN",
-    enabled: scope.ready,
+    currency,
+    enabled: scope.ready && currencyValid,
   });
 
   const rows = receivables.data?.data ?? [];
@@ -95,9 +117,16 @@ export default function ReceivablesPage() {
             {label}
           </Button>
         ))}
-        <span className="ml-auto text-xs text-muted-foreground">
-          {scopeLabel} · NGN
-        </span>
+        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{scopeLabel}</span>
+          <Input
+            aria-label="Receivables currency"
+            value={currency}
+            maxLength={3}
+            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+            className="h-8 w-24 uppercase"
+          />
+        </div>
       </div>
 
       {branchAccess.isError ? (
@@ -132,10 +161,19 @@ export default function ReceivablesPage() {
             </p>
           </CardContent>
         </Card>
-      ) : branchAccess.isLoading || (scope.ready && (summary.isLoading || aging.isLoading)) ? (
+      ) : branchAccess.isLoading || organization.isLoading || financeProfile.isLoading || (scope.ready && currencyValid && (summary.isLoading || aging.isLoading)) ? (
         <Card>
           <CardContent className="p-5 text-sm text-muted-foreground">
             Loading receivables…
+          </CardContent>
+        </Card>
+      ) : !currencyValid ? (
+        <Card>
+          <CardContent className="p-5 text-sm">
+            <div className="font-medium">Choose a receivables currency</div>
+            <p className="mt-1 text-muted-foreground">
+              Summary and aging require one explicit currency; Ondar does not add unlike currencies.
+            </p>
           </CardContent>
         </Card>
       ) : readError ? (
@@ -160,7 +198,7 @@ export default function ReceivablesPage() {
                 <div className="mt-2">
                   <MoneyAmount
                     amount={summary.data?.outstanding ?? "0"}
-                    currency={summary.data?.currency ?? "NGN"}
+                    currency={summary.data?.currency ?? currency}
                     emphasis="primary"
                   />
                 </div>
@@ -178,7 +216,7 @@ export default function ReceivablesPage() {
                 <div className="mt-2">
                   <MoneyAmount
                     amount={summary.data?.overdue ?? "0"}
-                    currency={summary.data?.currency ?? "NGN"}
+                    currency={summary.data?.currency ?? currency}
                     emphasis="primary"
                     className="text-critical"
                   />
@@ -197,7 +235,7 @@ export default function ReceivablesPage() {
                 <div className="mt-2">
                   <MoneyAmount
                     amount={summary.data?.due_soon ?? "0"}
-                    currency={summary.data?.currency ?? "NGN"}
+                    currency={summary.data?.currency ?? currency}
                     emphasis="primary"
                   />
                 </div>
@@ -212,7 +250,7 @@ export default function ReceivablesPage() {
                 <div className="mt-2">
                   <MoneyAmount
                     amount={summary.data?.collected ?? "0"}
-                    currency={summary.data?.currency ?? "NGN"}
+                    currency={summary.data?.currency ?? currency}
                     emphasis="primary"
                   />
                 </div>
@@ -326,7 +364,7 @@ export default function ReceivablesPage() {
                         </div>
                         <MoneyAmount
                           amount={bucket.outstanding}
-                          currency={aging.data?.currency ?? "NGN"}
+                          currency={aging.data?.currency ?? currency}
                           emphasis="table"
                         />
                       </div>
@@ -338,7 +376,7 @@ export default function ReceivablesPage() {
                     <span className="text-sm font-medium">Total outstanding</span>
                     <MoneyAmount
                       amount={aging.data?.total_outstanding ?? "0"}
-                      currency={aging.data?.currency ?? "NGN"}
+                      currency={aging.data?.currency ?? currency}
                       emphasis="table"
                     />
                   </div>
