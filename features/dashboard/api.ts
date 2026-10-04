@@ -105,9 +105,9 @@ export function useOrganizationDashboard(
   orgId: string,
   opts: {
     branchId?: string | null;
-    currency?: string;
+    currency: string;
     enabled?: boolean;
-  } = {},
+  },
 ) {
   const params = buildDashboardParams(opts);
   return useQuery<OrganizationDashboard>({
@@ -115,7 +115,7 @@ export function useOrganizationDashboard(
       "organization-dashboard",
       orgId,
       opts.branchId ?? null,
-      opts.currency ?? "NGN",
+      opts.currency,
     ],
     queryFn: async () => {
       const res = await fetchWithAuth(
@@ -124,7 +124,7 @@ export function useOrganizationDashboard(
       );
       return handleRes<OrganizationDashboard>(res);
     },
-    enabled: isUuid(orgId) && (opts.enabled ?? true),
+    enabled: isUuid(orgId) && Boolean(opts.currency) && (opts.enabled ?? true),
     staleTime: 30_000,
   });
 }
