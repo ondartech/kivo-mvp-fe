@@ -214,20 +214,20 @@ export function useReleasePaymentObligation(orgId: string) {
 
 export function usePaymentOperationsSummary(
   orgId: string,
-  opts: { currency?: string; branchId?: string | null } = {},
+  opts: { currency: string; branchId?: string | null },
 ) {
   return useQuery({
     queryKey: [
       "payment-operations",
       orgId,
       "summary",
-      opts.currency ?? "NGN",
+      opts.currency,
       opts.branchId ?? null,
     ],
     queryFn: async () => {
       requireOrganizationId(orgId);
       const params = new URLSearchParams({
-        currency: opts.currency ?? "NGN",
+        currency: opts.currency,
       });
       if (opts.branchId) params.set("branch_id", opts.branchId);
       const response = await fetchWithAuth(
@@ -238,7 +238,7 @@ export function usePaymentOperationsSummary(
         paymentOperationsSummarySchema.parse(value),
       );
     },
-    enabled: isOrganizationId(orgId),
+    enabled: isOrganizationId(orgId) && Boolean(opts.currency),
   });
 }
 
@@ -332,21 +332,21 @@ export function usePaymentRunItemDetail(
 
 export function usePaymentExecutionQueue(
   orgId: string,
-  opts: { currency?: string; branchId?: string | null; limit?: number } = {},
+  opts: { currency: string; branchId?: string | null; limit?: number },
 ) {
   return useQuery({
     queryKey: [
       "payment-operations",
       orgId,
       "executions",
-      opts.currency ?? "NGN",
+      opts.currency,
       opts.branchId ?? null,
       opts.limit ?? 100,
     ],
     queryFn: async () => {
       requireOrganizationId(orgId);
       const params = new URLSearchParams({
-        currency: opts.currency ?? "NGN",
+        currency: opts.currency,
         limit: String(opts.limit ?? 100),
       });
       if (opts.branchId) params.set("branch_id", opts.branchId);
@@ -356,25 +356,25 @@ export function usePaymentExecutionQueue(
       );
       return parseResponse(response, (value) => executionQueueSchema.parse(value));
     },
-    enabled: isOrganizationId(orgId),
+    enabled: isOrganizationId(orgId) && Boolean(opts.currency),
   });
 }
 
 export function usePaymentReconciliationQueue(
   orgId: string,
   opts: {
-    currency?: string;
+    currency: string;
     branchId?: string | null;
     attentionOnly?: boolean;
     limit?: number;
-  } = {},
+  },
 ) {
   return useQuery({
     queryKey: [
       "payment-operations",
       orgId,
       "reconciliation",
-      opts.currency ?? "NGN",
+      opts.currency,
       opts.branchId ?? null,
       opts.attentionOnly ?? true,
       opts.limit ?? 100,
@@ -382,7 +382,7 @@ export function usePaymentReconciliationQueue(
     queryFn: async () => {
       requireOrganizationId(orgId);
       const params = new URLSearchParams({
-        currency: opts.currency ?? "NGN",
+        currency: opts.currency,
         attention_only: String(opts.attentionOnly ?? true),
         limit: String(opts.limit ?? 100),
       });
@@ -395,7 +395,7 @@ export function usePaymentReconciliationQueue(
         reconciliationQueueSchema.parse(value),
       );
     },
-    enabled: isOrganizationId(orgId),
+    enabled: isOrganizationId(orgId) && Boolean(opts.currency),
   });
 }
 
