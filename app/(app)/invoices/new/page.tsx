@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MoneyAmount } from "@/components/kivo/money-amount";
@@ -16,7 +16,7 @@ import {
   type InvoiceCreateInput,
 } from "@/features/invoices/api";
 import { resolveInvoiceCreateBranchId } from "@/features/invoices/branching";
-import { useOperatingBranches } from "@/features/organization/api";
+import { useOperatingBranches, useOrganization } from "@/features/organization/api";
 import { useTaxCodes } from "@/features/tax/api";
 import {
   documentAttachableTaxCodes,
@@ -40,6 +40,7 @@ export default function NewInvoicePage() {
   const orgId = useActiveOrganizationId() ?? "";
   const activeBranchId = useActiveBranchId();
   const branchAccess = useOperatingBranches(orgId);
+  const organization = useOrganization(orgId);
   const customers = useCustomers(orgId, { status: "ACTIVE", limit: 100 });
   const catalogItems = useCatalogItems(orgId, { direction: "SELL" });
   const taxCodes = useTaxCodes(orgId);
@@ -55,11 +56,24 @@ export default function NewInvoicePage() {
   const [commercialItemId, setCommercialItemId] = useState("");
   const [taxCodeId, setTaxCodeId] = useState("");
   const [description, setDescription] = useState("");
+  const [currency, setCurrency] = useState("");
   const [amount, setAmount] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unitPrice, setUnitPrice] = useState("");
   const [issueDate, setIssueDate] = useState(localDate());
   const [dueDate, setDueDate] = useState(localDate(14));
+
+  useEffect(() => {
+    setCurrency("");
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!currency && organization.data?.default_currency) {
+      setCurrency(organization.data.default_currency);
+    }
+  }, [currency, organization.data?.default_currency]);
+
+  const currencyValid = /^[A-Z]{3}$/.test(currency);
 
   const createBranchId = resolveInvoiceCreateBranchId(
     branchAccess.data,
@@ -97,14 +111,14 @@ export default function NewInvoicePage() {
   });
 
   const previewTotals = async () => {
-    if (!description.trim() || !issueDate || !lineInputAmount) return;
+    if (!description.trim() || !issueDate || !lineInputAmount || !currencyValid) return;
     try {
       await preview.mutateAsync({
         line_items: [currentLine()],
         issue_date: issueDate,
         discount_total: "0",
         charge_total: "0",
-        currency: "NGN",
+        currency,
       });
     } catch {
       // React Query retains the authoritative API error for inline display.
@@ -113,7 +127,7 @@ export default function NewInvoicePage() {
 
   const saveDraft = async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!orgId || !customerId || !description.trim() || !dueDate || !issueDate) {
+    if (!orgId || !customerId || !description.trim() || !dueDate || !issueDate || !currencyValid) {
       return;
     }
     if (!createBranchId) return;
@@ -125,7 +139,7 @@ export default function NewInvoicePage() {
       customer_id: customerId,
       issue_date: issueDate,
       due_date: dueDate,
-      currency: "NGN",
+      currency,
       discount_total: "0",
       charge_total: "0",
       line_items: [line],
@@ -144,6 +158,7 @@ export default function NewInvoicePage() {
         description.trim() &&
         issueDate &&
         dueDate &&
+        currencyValid &&
         lineInputAmount,
     ) && !createInvoice.isPending;
 
@@ -279,6 +294,24 @@ export default function NewInvoicePage() {
               </div>
 
               <div>
+                <Label htmlFor="invoice-currency">Currency *</Label>
+                <Input
+                  id="invoice-currency"
+                  value={currency}
+                  maxLength={3}
+                  onChange={(event) => {
+                    setCurrency(event.target.value.toUpperCase());
+                    preview.reset();
+                  }}
+                  className="mt-1 uppercase"
+                  placeholder="USD"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Prefilled from the organization commercial currency. You can change it before issue.
+                </p>
+              </div>
+
+              <div>
                 <Label htmlFor="description">Description</Label>
                 <Input
                   id="description"
@@ -291,7 +324,7 @@ export default function NewInvoicePage() {
 
               {mode === "quick" ? (
                 <div>
-                  <Label htmlFor="amount">Amount (NGN)</Label>
+                  <Label htmlFor="amount">Amount ({currency || "—"})</Label>
                   <Input
                     id="amount"
                     inputMode="decimal"
@@ -325,7 +358,7 @@ export default function NewInvoicePage() {
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label htmlFor="unit-price">Unit price (NGN)</Label>
+                      <Label htmlFor="unit-price">Unit price ({currency || "—"})</Label>
                       <Input
                         id="unit-price"
                         inputMode="decimal"
@@ -437,7 +470,7 @@ export default function NewInvoicePage() {
                     <span className="text-muted-foreground">Subtotal</span>
                     <MoneyAmount
                       amount={preview.data.subtotal}
-                      currency="NGN"
+                      currency={currency}
                       emphasis="table"
                     />
                   </div>
@@ -445,7 +478,7 @@ export default function NewInvoicePage() {
                     <span className="text-muted-foreground">Tax</span>
                     <MoneyAmount
                       amount={preview.data.tax_total}
-                      currency="NGN"
+                      currency={currency}
                       emphasis="table"
                     />
                   </div>
@@ -453,7 +486,7 @@ export default function NewInvoicePage() {
                     <span>Total</span>
                     <MoneyAmount
                       amount={preview.data.grand_total}
-                      currency="NGN"
+                      currency={currency}
                       emphasis="table"
                     />
                   </div>
@@ -471,7 +504,7 @@ export default function NewInvoicePage() {
                 <div>
                   <MoneyAmount
                     amount={lineInputAmount || "0"}
-                    currency="NGN"
+                    currency={currency}
                     emphasis="table"
                   />
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -485,7 +518,7 @@ export default function NewInvoicePage() {
                 type="button"
                 variant="outline"
                 className="w-full"
-                disabled={!lineInputAmount || !description.trim() || preview.isPending}
+                disabled={!lineInputAmount || !description.trim() || !currencyValid || preview.isPending}
                 loading={preview.isPending}
                 onClick={() => void previewTotals()}
               >
