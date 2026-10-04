@@ -20,12 +20,14 @@ import {
 import { resolveProjectCreateBranchId } from "@/features/projects/branching";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 
 export default function NewProjectPage() {
   const router = useRouter();
   const orgId = useActiveOrganizationId() ?? "";
   const activeBranchId = useActiveBranchId();
   const branchAccess = useOperatingBranches(orgId);
+  const { currency, setCurrency } = useOrganizationCurrencySelection(orgId);
   const customers = useCustomers(orgId, {
     status: "ACTIVE",
     limit: 100,
@@ -42,7 +44,6 @@ export default function NewProjectPage() {
   const [customerId, setCustomerId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [currency, setCurrency] = useState("NGN");
   const [startDate, setStartDate] = useState("");
   const [targetEndDate, setTargetEndDate] = useState("");
 
