@@ -102,7 +102,7 @@ export function useReceivables(
       opts.collectionState ?? null,
       opts.paymentState ?? null,
       opts.overdue ?? null,
-      opts.currency ?? "NGN",
+      opts.currency ?? null,
       opts.cursor ?? null,
       opts.limit ?? 20,
       opts.sort ?? "due_date:asc",
@@ -123,20 +123,20 @@ export function useReceivablesSummary(
   orgId: string,
   opts: {
     branchId?: string | null;
-    currency?: string;
+    currency: string;
     enabled?: boolean;
-  } = {},
+  },
 ) {
   return useQuery<ReceivablesSummary>({
     queryKey: [
       "receivables-summary",
       orgId,
       opts.branchId ?? null,
-      opts.currency ?? "NGN",
+      opts.currency,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
-      params.set("currency", opts.currency ?? "NGN");
+      params.set("currency", opts.currency);
       if (opts.branchId) params.set("branch_id", opts.branchId);
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/receivables/summary?${params.toString()}`,
@@ -144,7 +144,7 @@ export function useReceivablesSummary(
       );
       return handleRes<ReceivablesSummary>(res);
     },
-    enabled: isUuid(orgId) && (opts.enabled ?? true),
+    enabled: isUuid(orgId) && Boolean(opts.currency) && (opts.enabled ?? true),
   });
 }
 
@@ -152,20 +152,20 @@ export function useReceivablesAging(
   orgId: string,
   opts: {
     branchId?: string | null;
-    currency?: string;
+    currency: string;
     enabled?: boolean;
-  } = {},
+  },
 ) {
   return useQuery<AgingReport>({
     queryKey: [
       "receivables-aging",
       orgId,
       opts.branchId ?? null,
-      opts.currency ?? "NGN",
+      opts.currency,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
-      params.set("currency", opts.currency ?? "NGN");
+      params.set("currency", opts.currency);
       if (opts.branchId) params.set("branch_id", opts.branchId);
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/receivables/aging?${params.toString()}`,
@@ -173,6 +173,6 @@ export function useReceivablesAging(
       );
       return handleRes<AgingReport>(res);
     },
-    enabled: isUuid(orgId) && (opts.enabled ?? true),
+    enabled: isUuid(orgId) && Boolean(opts.currency) && (opts.enabled ?? true),
   });
 }
