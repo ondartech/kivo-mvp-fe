@@ -14,6 +14,13 @@ import {
 } from "./schema";
 import { buildFinanceActivityParams } from "./branching";
 
+export type FinanceProfile = {
+  id: string;
+  organization_id: string;
+  default_presentation_currency: string | null;
+  version: number;
+};
+
 function baseUrl(orgId: string): string {
   return `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/v1/organizations/${orgId}`;
 }
@@ -51,6 +58,22 @@ async function parseResponse<T>(
     );
   }
   return parse(body);
+}
+
+
+export function useFinanceProfile(orgId: string) {
+  return useQuery<FinanceProfile>({
+    queryKey: ["finance", orgId, "profile"],
+    queryFn: async () => {
+      requireOrganizationId(orgId);
+      const response = await fetchWithAuth(`${baseUrl(orgId)}/finance/profile`, {
+        method: "GET",
+      });
+      return parseResponse(response, (value) => value as FinanceProfile);
+    },
+    enabled: isOrganizationId(orgId),
+    staleTime: 60_000,
+  });
 }
 
 export function useFinanceAccounts(orgId: string) {
