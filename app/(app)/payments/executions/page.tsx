@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/kivo/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -23,13 +24,20 @@ import {
 } from "@/features/payments/payment-runs";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 import { formatMoney } from "@/lib/money";
 
 export default function PaymentExecutionsPage() {
   const orgId = useActiveOrganizationId() ?? "";
   const branchId = useActiveBranchId();
+  const {
+    currency,
+    setCurrency,
+    currencyValid,
+    organization,
+  } = useOrganizationCurrencySelection(orgId);
   const executions = usePaymentExecutionQueue(orgId, {
-    currency: "NGN",
+    currency,
     branchId,
     limit: 100,
   });
@@ -43,6 +51,20 @@ export default function PaymentExecutionsPage() {
     );
   }
 
+  if (organization.isError) {
+    return (
+      <ErrorState
+        title="Currency context unavailable"
+        description={
+          organization.error instanceof Error
+            ? organization.error.message
+            : "The organization currency could not be loaded."
+        }
+        retry={{ label: "Retry", onClick: () => void organization.refetch() }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -50,18 +72,25 @@ export default function PaymentExecutionsPage() {
         title="Execution queue"
         description="Prepared and released batches. This surface distinguishes instruction dispatch and acceptance from authoritative settlement."
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              aria-label="Execution queue currency"
+              value={currency}
+              maxLength={3}
+              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+              className="h-9 w-24 uppercase"
+            />
             <Button variant="outline" asChild>
               <Link href="/app/payments">Operations</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/app/payments/reconciliation">Reconciliation</Link>
             </Button>
-          </>
+          </div>
         }
       />
 
-      {executions.isLoading ? (
+      {organization.isLoading || !currencyValid || executions.isLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
