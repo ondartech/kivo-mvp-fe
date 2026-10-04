@@ -133,6 +133,7 @@ export function usePaymentObligations(
     currency?: string | null;
     cursor?: string | null;
     limit?: number;
+    enabled?: boolean;
   } = {},
 ) {
   return useQuery({
@@ -163,7 +164,7 @@ export function usePaymentObligations(
         paymentObligationListSchema.parse(value),
       );
     },
-    enabled: isOrganizationId(orgId),
+    enabled: isOrganizationId(orgId) && (opts.enabled ?? true),
     placeholderData: (previous) => previous,
   });
 }
