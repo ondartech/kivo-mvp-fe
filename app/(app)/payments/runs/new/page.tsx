@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useOperatingBranches } from "@/features/organization/api";
+import { useOperatingBranches, useOrganization } from "@/features/organization/api";
 import {
   addPaymentRunItemCommand,
   useBankAccounts,
@@ -52,25 +52,56 @@ export default function NewPaymentRunPage() {
   const activeBranchId = useActiveBranchId();
 
   const branches = useOperatingBranches(orgId);
+  const organization = useOrganization(orgId);
   const [branchId, setBranchId] = useState(activeBranchId ?? "");
   const [name, setName] = useState("");
+  const [currency, setCurrency] = useState("");
 
   useEffect(() => {
     if (!branchId && activeBranchId) setBranchId(activeBranchId);
   }, [activeBranchId, branchId]);
-  const currency = "NGN";
+
   const [fundingAccountId, setFundingAccountId] = useState("");
   const [executionDate, setExecutionDate] = useState("");
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
 
   const bankAccounts = useBankAccounts(orgId);
+  const activeAccounts = useMemo(
+    () => (bankAccounts.data ?? []).filter((account) => account.status === "ACTIVE"),
+    [bankAccounts.data],
+  );
+  const availableCurrencies = useMemo(
+    () => Array.from(new Set(activeAccounts.map((account) => account.currency))).sort(),
+    [activeAccounts],
+  );
+  const currencyValid = /^[A-Z]{3}$/.test(currency);
+
+  useEffect(() => {
+    setCurrency("");
+    setFundingAccountId("");
+    setSelected({});
+    preview.reset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
+
+  useEffect(() => {
+    if (currency || availableCurrencies.length === 0) return;
+    const configured = organization.data?.default_currency;
+    if (configured && availableCurrencies.includes(configured)) {
+      setCurrency(configured);
+      return;
+    }
+    if (availableCurrencies.length === 1) setCurrency(availableCurrencies[0]);
+  }, [availableCurrencies, currency, organization.data?.default_currency]);
+
   const openObligations = usePaymentObligations(orgId, {
     status: "OPEN",
     controlStatus: "AVAILABLE",
     branchId: branchId || null,
     currency,
     limit: 100,
+    enabled: currencyValid,
   });
   const partiallySettledObligations = usePaymentObligations(orgId, {
     status: "PARTIALLY_SETTLED",
@@ -78,6 +109,7 @@ export default function NewPaymentRunPage() {
     branchId: branchId || null,
     currency,
     limit: 100,
+    enabled: currencyValid,
   });
   const availableObligations = useMemo(
     () => [
@@ -90,12 +122,8 @@ export default function NewPaymentRunPage() {
   const createRun = useCreatePaymentRun(orgId);
 
   const activeBankAccounts = useMemo(
-    () =>
-      (bankAccounts.data ?? []).filter(
-        (account) =>
-          account.status === "ACTIVE" && account.currency === currency,
-      ),
-    [bankAccounts.data, currency],
+    () => activeAccounts.filter((account) => account.currency === currency),
+    [activeAccounts, currency],
   );
 
   const selectedItems = useMemo(
@@ -136,6 +164,10 @@ export default function NewPaymentRunPage() {
   };
 
   const previewRun = async () => {
+    if (!currencyValid) {
+      toast.error("Select an execution currency.");
+      return;
+    }
     if (!fundingAccountId) {
       toast.error("Select the funding bank account.");
       return;
@@ -167,7 +199,7 @@ export default function NewPaymentRunPage() {
       />
 
       <Card>
-        <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-5">
           <div>
             <Label htmlFor="payment-run-name">Name</Label>
             <Input
@@ -203,6 +235,30 @@ export default function NewPaymentRunPage() {
                 choosing obligations.
               </p>
             ) : null}
+          </div>
+          <div>
+            <Label htmlFor="payment-run-currency">Execution currency</Label>
+            <select
+              id="payment-run-currency"
+              className={selectClassName}
+              value={currency}
+              onChange={(event) => {
+                setCurrency(event.target.value);
+                setFundingAccountId("");
+                setSelected({});
+                preview.reset();
+              }}
+            >
+              <option value="">Select currency</option>
+              {availableCurrencies.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              One Payment Run uses one execution currency.
+            </p>
           </div>
           <div>
             <Label htmlFor="payment-run-funding">Funding account</Label>
@@ -359,7 +415,7 @@ export default function NewPaymentRunPage() {
             </div>
             <Button
               variant="outline"
-              disabled={preview.isPending || selectedItems.length === 0}
+              disabled={preview.isPending || !currencyValid || selectedItems.length === 0}
               onClick={() => void previewRun()}
             >
               {preview.isPending ? "Validating…" : "Preview Payment Run"}
