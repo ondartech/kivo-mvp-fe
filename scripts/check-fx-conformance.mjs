@@ -10,8 +10,7 @@ const forbidden = [
   ["nullish NGN fallback", /\?\?\s*["']NGN["']/g],
   ["boolean NGN fallback", /\|\|\s*["']NGN["']/g],
   ["NGN state default", /useState(?:<[^>]+>)?\(\s*["']NGN["']\s*\)/g],
-  ["NGN currency default", /\bcurrency\s*=\s*["']NGN["']/g],
-  ["NGN JSX currency prop", /\bcurrency\s*=\s*["']NGN["']/g],
+  ["typed NGN currency default", /\bcurrency\s*:\s*string\s*=\s*["']NGN["']/g],
   ["hard-coded NGN money formatting", /format(?:Compact)?Money\([^,\n]+,\s*["']NGN["']/g],
   ["hard-coded NGN MoneyAmount prop", /<MoneyAmount[\s\S]{0,220}?currency=["']NGN["']/g],
 ];
@@ -32,6 +31,27 @@ function filesUnder(directory) {
 }
 
 const violations = [];
+
+const moneySource = readFileSync(join(root, "lib/money.ts"), "utf8");
+if (/currency\s*:\s*string\s*=\s*["']NGN["']/.test(moneySource)) {
+  violations.push("lib/money.ts: generic formatter must not default currency to NGN");
+}
+
+const moneyAmountSource = readFileSync(
+  join(root, "components/kivo/money-amount.tsx"),
+  "utf8",
+);
+if (/currency\?:\s*string/.test(moneyAmountSource)) {
+  violations.push(
+    "components/kivo/money-amount.tsx: generic money components must require currency",
+  );
+}
+if (/currency\s*=\s*["']NGN["']/.test(moneyAmountSource)) {
+  violations.push(
+    "components/kivo/money-amount.tsx: generic money components must not default to NGN",
+  );
+}
+
 for (const sourceRoot of sourceRoots) {
   for (const file of filesUnder(sourceRoot)) {
     const content = readFileSync(file, "utf8");
