@@ -66,6 +66,8 @@ export default function NewPaymentRunPage() {
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
 
+  const preview = usePreviewPaymentRun(orgId);
+  const createRun = useCreatePaymentRun(orgId);
   const bankAccounts = useBankAccounts(orgId);
   const activeAccounts = useMemo(
     () => (bankAccounts.data ?? []).filter((account) => account.status === "ACTIVE"),
@@ -118,9 +120,6 @@ export default function NewPaymentRunPage() {
     ],
     [openObligations.data?.data, partiallySettledObligations.data?.data],
   );
-  const preview = usePreviewPaymentRun(orgId);
-  const createRun = useCreatePaymentRun(orgId);
-
   const activeBankAccounts = useMemo(
     () => activeAccounts.filter((account) => account.currency === currency),
     [activeAccounts, currency],
