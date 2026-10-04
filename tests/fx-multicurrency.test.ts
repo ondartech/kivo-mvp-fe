@@ -1,3 +1,4 @@
+// FX-013G canonical roadmap conformance.
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
