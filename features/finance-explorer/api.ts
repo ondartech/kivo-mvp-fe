@@ -110,6 +110,7 @@ export function useAccountActivity(
   accountId: string,
   opts: {
     branchId?: string | null;
+    presentationCurrency?: string | null;
     enabled?: boolean;
   } = {},
 ) {
@@ -121,12 +122,14 @@ export function useAccountActivity(
       accountId,
       "activity",
       opts.branchId ?? null,
+      opts.presentationCurrency ?? null,
     ],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       requireOrganizationId(orgId);
       const params = buildFinanceActivityParams({
         branchId: opts.branchId,
+        presentationCurrency: opts.presentationCurrency,
         cursor: pageParam,
         limit: 50,
       });
