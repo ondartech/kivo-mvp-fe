@@ -23,6 +23,7 @@ import {
 } from "@/features/payments/payment-runs";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 import { formatMoney } from "@/lib/money";
 
 const selectClassName =
@@ -36,9 +37,15 @@ export default function PaymentReconciliationPage() {
   const orgId = useActiveOrganizationId() ?? "";
   const branchId = useActiveBranchId();
   const [attentionOnly, setAttentionOnly] = useState(true);
+  const {
+    currency,
+    setCurrency,
+    currencyValid,
+    organization,
+  } = useOrganizationCurrencySelection(orgId);
 
   const queue = usePaymentReconciliationQueue(orgId, {
-    currency: "NGN",
+    currency,
     branchId,
     attentionOnly,
     limit: 100,
@@ -49,6 +56,20 @@ export default function PaymentReconciliationPage() {
       <EmptyState
         title="Organization context required"
         description="Select an organization workspace before opening reconciliation."
+      />
+    );
+  }
+
+  if (organization.isError) {
+    return (
+      <ErrorState
+        title="Currency context unavailable"
+        description={
+          organization.error instanceof Error
+            ? organization.error.message
+            : "The organization currency could not be loaded."
+        }
+        retry={{ label: "Retry", onClick: () => void organization.refetch() }}
       />
     );
   }
@@ -80,6 +101,14 @@ export default function PaymentReconciliationPage() {
               items are not hidden by newer completed instructions.
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Input
+              aria-label="Reconciliation currency"
+              value={currency}
+              maxLength={3}
+              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+              className="h-9 w-24 uppercase"
+            />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -88,10 +117,11 @@ export default function PaymentReconciliationPage() {
             />
             Attention only
           </label>
+          </div>
         </CardContent>
       </Card>
 
-      {queue.isLoading ? (
+      {organization.isLoading || !currencyValid || queue.isLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
