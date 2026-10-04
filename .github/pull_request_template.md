@@ -24,6 +24,27 @@ KIV-XXX
 
 ## Documentation / Release Impact
 
+### Machine-readable declaration
+
+Edit every placeholder before requesting review. This block is validated against the canonical Ondar documentation-impact contract.
+
+<!-- ondar-documentation-impact:start -->
+```json
+{
+  "schema_version": 1,
+  "classification": "REPLACE_ME",
+  "change_types": ["REPLACE_ME"],
+  "canonical_pages": [],
+  "release_note": "pending",
+  "openapi_impact": "REPLACE_ME",
+  "learning_impact": "REPLACE_ME",
+  "regulatory_impact": "REPLACE_ME",
+  "rationale": "",
+  "source_authority": ""
+}
+```
+<!-- ondar-documentation-impact:end -->
+
 Use the canonical Ondar documentation-impact contract from `ondartech/docs/docs-architecture/DOCUMENTATION_IMPACT_CONTRACT.md`.
 
 ### Classification
