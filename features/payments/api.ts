@@ -10,6 +10,7 @@ import { z } from "zod";
 import { isOrganizationId } from "@/features/foundation/api";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
+import { buildPaymentOperationsParams } from "./payment-runs";
 import {
   approvalRequestSchema,
   bankAccountSchema,
@@ -227,10 +228,10 @@ export function usePaymentOperationsSummary(
     ],
     queryFn: async () => {
       requireOrganizationId(orgId);
-      const params = new URLSearchParams({
+      const params = buildPaymentOperationsParams({
         currency: opts.currency,
+        branchId: opts.branchId,
       });
-      if (opts.branchId) params.set("branch_id", opts.branchId);
       const response = await fetchWithAuth(
         `${baseUrl(orgId)}/payment-operations/summary?${params.toString()}`,
         { method: "GET" },
@@ -346,11 +347,11 @@ export function usePaymentExecutionQueue(
     ],
     queryFn: async () => {
       requireOrganizationId(orgId);
-      const params = new URLSearchParams({
+      const params = buildPaymentOperationsParams({
         currency: opts.currency,
-        limit: String(opts.limit ?? 100),
+        branchId: opts.branchId,
+        limit: opts.limit ?? 100,
       });
-      if (opts.branchId) params.set("branch_id", opts.branchId);
       const response = await fetchWithAuth(
         `${baseUrl(orgId)}/payment-operations/executions?${params.toString()}`,
         { method: "GET" },
@@ -382,12 +383,12 @@ export function usePaymentReconciliationQueue(
     ],
     queryFn: async () => {
       requireOrganizationId(orgId);
-      const params = new URLSearchParams({
+      const params = buildPaymentOperationsParams({
         currency: opts.currency,
-        attention_only: String(opts.attentionOnly ?? true),
-        limit: String(opts.limit ?? 100),
+        branchId: opts.branchId,
+        attentionOnly: opts.attentionOnly ?? true,
+        limit: opts.limit ?? 100,
       });
-      if (opts.branchId) params.set("branch_id", opts.branchId);
       const response = await fetchWithAuth(
         `${baseUrl(orgId)}/payment-operations/reconciliation?${params.toString()}`,
         { method: "GET" },
