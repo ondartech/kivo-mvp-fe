@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { fetchWithAuth } from "@/lib/api-client";
 import { isUuid } from "@/lib/experience/ask-runtime";
 import type { CustomerCreateInput, CustomerPatchInput } from "./schema";
+import { buildReceivableCurrencyParams } from "@/features/receivables/branching";
 
 type Customer = {
   id: string;
@@ -117,10 +118,9 @@ export function useCustomerBalance(
   return useQuery<CustomerBalance>({
     queryKey: ["customer-balance", orgId, customerId, opts.currency],
     queryFn: async () => {
-      if (!/^[A-Z]{3}$/.test(opts.currency)) {
-        throw new Error("Customer balance requires an explicit ISO currency.");
-      }
-      const params = new URLSearchParams({ currency: opts.currency });
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+      });
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/customers/${customerId}/balance?${params.toString()}`,
         { method: "GET" },
