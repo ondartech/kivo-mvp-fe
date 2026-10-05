@@ -5,7 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/experience/ask-runtime";
-import { buildReceivableListParams } from "./branching";
+import {
+  buildReceivableCurrencyParams,
+  buildReceivableListParams,
+} from "./branching";
 
 export type ReceivableItem = {
   invoice_id: string;
@@ -135,9 +138,10 @@ export function useReceivablesSummary(
       opts.currency,
     ],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("currency", opts.currency);
-      if (opts.branchId) params.set("branch_id", opts.branchId);
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+        branchId: opts.branchId,
+      });
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/receivables/summary?${params.toString()}`,
         { method: "GET" },
@@ -164,9 +168,10 @@ export function useReceivablesAging(
       opts.currency,
     ],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("currency", opts.currency);
-      if (opts.branchId) params.set("branch_id", opts.branchId);
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+        branchId: opts.branchId,
+      });
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/receivables/aging?${params.toString()}`,
         { method: "GET" },
