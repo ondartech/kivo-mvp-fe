@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import { buildDashboardParams } from "@/features/dashboard/branching";
 import { buildFinanceActivityParams } from "@/features/finance-explorer/branching";
+import { buildPaymentOperationsParams } from "@/features/payments/payment-runs";
+import { buildReceivableCurrencyParams } from "@/features/receivables/branching";
 import {
   reportTranslationContextSchema,
   reportingRateEvidenceSchema,
@@ -71,6 +73,34 @@ describe("FX-013G multi-currency presentation conformance", () => {
     });
     expect(params.get("currency")).toBe("EUR");
     expect(params.has("branch_id")).toBe(false);
+  });
+
+  it("preserves explicit Receivables reporting currency and branch scope", () => {
+    const params = buildReceivableCurrencyParams({
+      branchId: "lag",
+      currency: "GBP",
+    });
+    expect(params.get("currency")).toBe("GBP");
+    expect(params.get("branch_id")).toBe("lag");
+    expect(() =>
+      buildReceivableCurrencyParams({ currency: "" }),
+    ).toThrow(/explicit ISO currency/);
+  });
+
+  it("preserves Payment Operations execution/reporting currency", () => {
+    const params = buildPaymentOperationsParams({
+      branchId: "hq",
+      currency: "USD",
+      attentionOnly: true,
+      limit: 25,
+    });
+    expect(params.get("currency")).toBe("USD");
+    expect(params.get("branch_id")).toBe("hq");
+    expect(params.get("attention_only")).toBe("true");
+    expect(params.get("limit")).toBe("25");
+    expect(() =>
+      buildPaymentOperationsParams({ currency: "US" }),
+    ).toThrow(/explicit ISO currency/);
   });
 
   it("parses reporting FX evidence without collapsing functional and presentation currency", () => {
