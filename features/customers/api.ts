@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { fetchWithAuth } from "@/lib/api-client";
 import { isUuid } from "@/lib/experience/ask-runtime";
 import type { CustomerCreateInput, CustomerPatchInput } from "./schema";
+import { buildReceivableCurrencyParams } from "@/features/receivables/branching";
 
 type Customer = {
   id: string;
@@ -109,14 +110,28 @@ export function useCustomer(orgId: string, customerId: string) {
   });
 }
 
-export function useCustomerBalance(orgId: string, customerId: string) {
+export function useCustomerBalance(
+  orgId: string,
+  customerId: string,
+  opts: { currency: string; enabled?: boolean },
+) {
   return useQuery<CustomerBalance>({
-    queryKey: ["customer-balance", orgId, customerId],
+    queryKey: ["customer-balance", orgId, customerId, opts.currency],
     queryFn: async () => {
-      const res = await fetchWithAuth(`${baseUrl(orgId)}/customers/${customerId}/balance`, { method: "GET" });
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+      });
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/customers/${customerId}/balance?${params.toString()}`,
+        { method: "GET" },
+      );
       return handleRes(res);
     },
-    enabled: !!customerId,
+    enabled:
+      isUuid(orgId) &&
+      isUuid(customerId) &&
+      /^[A-Z]{3}$/.test(opts.currency) &&
+      (opts.enabled ?? true),
   });
 }
 

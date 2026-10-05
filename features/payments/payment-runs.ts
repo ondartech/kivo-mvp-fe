@@ -1,5 +1,23 @@
 import type { PaymentRun, PaymentRunItem } from "./schema";
 
+export function buildPaymentOperationsParams(input: {
+  currency: string;
+  branchId?: string | null;
+  limit?: number;
+  attentionOnly?: boolean;
+}): URLSearchParams {
+  if (!/^[A-Z]{3}$/.test(input.currency)) {
+    throw new Error("Payment Operations requires an explicit ISO currency.");
+  }
+  const params = new URLSearchParams({ currency: input.currency });
+  if (input.branchId) params.set("branch_id", input.branchId);
+  if (input.limit !== undefined) params.set("limit", String(input.limit));
+  if (input.attentionOnly !== undefined) {
+    params.set("attention_only", String(input.attentionOnly));
+  }
+  return params;
+}
+
 export type PaymentRunStatusVariant =
   | "neutral"
   | "success"

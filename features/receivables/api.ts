@@ -5,7 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/experience/ask-runtime";
-import { buildReceivableListParams } from "./branching";
+import {
+  buildReceivableCurrencyParams,
+  buildReceivableListParams,
+} from "./branching";
 
 export type ReceivableItem = {
   invoice_id: string;
@@ -58,6 +61,26 @@ export type AgingReport = {
   total_outstanding: string;
 };
 
+export type CustomerBalance = {
+  customer_id: string;
+  organization_id: string;
+  branch_id: string | null;
+  currency: string;
+  outstanding: string;
+  available_credit: string;
+  refund_reserved_credit: string;
+  net_receivable: string;
+  overdue: string;
+  invoiced: string;
+  paid: string;
+  cash_applied: string;
+  withholding_applied: string;
+  other_noncash_applied: string;
+  invoice_count: number;
+  overdue_count: number;
+  as_of: string;
+};
+
 function baseUrl(orgId: string) {
   return `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/v1/organizations/${orgId}`;
 }
@@ -102,7 +125,7 @@ export function useReceivables(
       opts.collectionState ?? null,
       opts.paymentState ?? null,
       opts.overdue ?? null,
-      opts.currency ?? "NGN",
+      opts.currency ?? null,
       opts.cursor ?? null,
       opts.limit ?? 20,
       opts.sort ?? "due_date:asc",
@@ -123,28 +146,65 @@ export function useReceivablesSummary(
   orgId: string,
   opts: {
     branchId?: string | null;
-    currency?: string;
+    currency: string;
     enabled?: boolean;
-  } = {},
+  },
 ) {
   return useQuery<ReceivablesSummary>({
     queryKey: [
       "receivables-summary",
       orgId,
       opts.branchId ?? null,
-      opts.currency ?? "NGN",
+      opts.currency,
     ],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("currency", opts.currency ?? "NGN");
-      if (opts.branchId) params.set("branch_id", opts.branchId);
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+        branchId: opts.branchId,
+      });
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/receivables/summary?${params.toString()}`,
         { method: "GET" },
       );
       return handleRes<ReceivablesSummary>(res);
     },
-    enabled: isUuid(orgId) && (opts.enabled ?? true),
+    enabled: isUuid(orgId) && Boolean(opts.currency) && (opts.enabled ?? true),
+  });
+}
+
+export function useCustomerBalance(
+  orgId: string,
+  customerId: string,
+  opts: {
+    branchId?: string | null;
+    currency: string;
+    enabled?: boolean;
+  },
+) {
+  return useQuery<CustomerBalance>({
+    queryKey: [
+      "customer-balance",
+      orgId,
+      customerId,
+      opts.branchId ?? null,
+      opts.currency,
+    ],
+    queryFn: async () => {
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+        branchId: opts.branchId,
+      });
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/customers/${customerId}/balance?${params.toString()}`,
+        { method: "GET" },
+      );
+      return handleRes<CustomerBalance>(res);
+    },
+    enabled:
+      isUuid(orgId) &&
+      isUuid(customerId) &&
+      Boolean(opts.currency) &&
+      (opts.enabled ?? true),
   });
 }
 
@@ -152,27 +212,28 @@ export function useReceivablesAging(
   orgId: string,
   opts: {
     branchId?: string | null;
-    currency?: string;
+    currency: string;
     enabled?: boolean;
-  } = {},
+  },
 ) {
   return useQuery<AgingReport>({
     queryKey: [
       "receivables-aging",
       orgId,
       opts.branchId ?? null,
-      opts.currency ?? "NGN",
+      opts.currency,
     ],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("currency", opts.currency ?? "NGN");
-      if (opts.branchId) params.set("branch_id", opts.branchId);
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+        branchId: opts.branchId,
+      });
       const res = await fetchWithAuth(
         `${baseUrl(orgId)}/receivables/aging?${params.toString()}`,
         { method: "GET" },
       );
       return handleRes<AgingReport>(res);
     },
-    enabled: isUuid(orgId) && (opts.enabled ?? true),
+    enabled: isUuid(orgId) && Boolean(opts.currency) && (opts.enabled ?? true),
   });
 }

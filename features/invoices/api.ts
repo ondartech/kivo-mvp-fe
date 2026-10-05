@@ -196,7 +196,7 @@ export function useCalculateInvoicePreview(orgId: string) {
       issue_date?: string | null;
       discount_total?: string;
       charge_total?: string;
-      currency?: string | null;
+      currency: string;
     }
   >({
     mutationFn: async (input) => {

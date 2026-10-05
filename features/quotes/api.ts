@@ -230,7 +230,7 @@ export function useCalculateQuotePreview(orgId: string) {
       line_items: QuoteLineInput[];
       discount_total?: string;
       charge_total?: string;
-      currency?: string | null;
+      currency: string;
     }
   >({
     mutationFn: async (input) => {

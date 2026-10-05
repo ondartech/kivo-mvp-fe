@@ -85,6 +85,12 @@ export default function FinanceJournalDetailPage() {
             <div className="flex justify-between gap-4"><span className="text-muted-foreground">Profile</span><span className="font-medium">{entry.posting_profile_key}</span></div>
             <div className="flex justify-between gap-4"><span className="text-muted-foreground">Rule</span><span className="font-medium">{entry.posting_rule_key} v{entry.posting_rule_version}</span></div>
             <div className="flex justify-between gap-4"><span className="text-muted-foreground">Currency</span><span className="font-medium">{entry.transaction_currency} → {entry.base_currency}</span></div>
+            {entry.transaction_currency !== entry.base_currency ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">FX rate</span>
+                <span className="font-mono text-xs">{entry.fx_rate ?? "Unavailable"}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-4"><span className="text-muted-foreground">Created by</span><span className="font-medium">{entry.created_by_principal}</span></div>
             <div className="flex justify-between gap-4"><span className="text-muted-foreground">Correlation</span><span className="font-mono text-xs">{entry.correlation_id ?? "—"}</span></div>
             {entry.reversal_of_entry_id ? <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reverses</span><Link className="font-medium hover:underline" href={`/app/finance/journals/${entry.reversal_of_entry_id}`}>{shortIdentifier(entry.reversal_of_entry_id)}</Link></div> : null}
@@ -125,8 +131,22 @@ export default function FinanceJournalDetailPage() {
                   </Link>
                 </TableCell>
                 <TableCell>{line.description}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMoney(line.debit_base, entry.base_currency)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatMoney(line.credit_base, entry.base_currency)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMoney(line.debit_base, entry.base_currency)}
+                  {entry.transaction_currency !== entry.base_currency ? (
+                    <div className="text-xs text-muted-foreground">
+                      {formatMoney(line.debit_transaction, entry.transaction_currency)} transaction
+                    </div>
+                  ) : null}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatMoney(line.credit_base, entry.base_currency)}
+                  {entry.transaction_currency !== entry.base_currency ? (
+                    <div className="text-xs text-muted-foreground">
+                      {formatMoney(line.credit_transaction, entry.transaction_currency)} transaction
+                    </div>
+                  ) : null}
+                </TableCell>
               </TableRow>
             ))}
             <TableRow>
