@@ -154,9 +154,7 @@ export function usePaymentObligations(
       if (opts.status) params.set("status", opts.status);
       if (opts.controlStatus) params.set("control_status", opts.controlStatus);
       if (opts.branchId) params.set("branch_id", opts.branchId);
-      if (opts.settlementCurrency) {
-        params.set("settlement_currency", opts.settlementCurrency);
-      }
+      if (opts.currency) params.set("currency", opts.currency);
       if (opts.cursor) params.set("cursor", opts.cursor);
       params.set("limit", String(opts.limit ?? 50));
       const response = await fetchWithAuth(
@@ -275,7 +273,9 @@ export function usePaymentRuns(
         limit: String(opts.limit ?? 30),
       });
       if (opts.status) params.set("status", opts.status);
-      if (opts.currency) params.set("currency", opts.currency);
+      if (opts.settlementCurrency) {
+        params.set("settlement_currency", opts.settlementCurrency);
+      }
       if (opts.fundingBankAccountId) {
         params.set("funding_bank_account_id", opts.fundingBankAccountId);
       }
