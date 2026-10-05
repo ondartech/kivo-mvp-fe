@@ -61,6 +61,26 @@ export type AgingReport = {
   total_outstanding: string;
 };
 
+export type CustomerBalance = {
+  customer_id: string;
+  organization_id: string;
+  branch_id: string | null;
+  currency: string;
+  outstanding: string;
+  available_credit: string;
+  refund_reserved_credit: string;
+  net_receivable: string;
+  overdue: string;
+  invoiced: string;
+  paid: string;
+  cash_applied: string;
+  withholding_applied: string;
+  other_noncash_applied: string;
+  invoice_count: number;
+  overdue_count: number;
+  as_of: string;
+};
+
 function baseUrl(orgId: string) {
   return `${env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api/v1/organizations/${orgId}`;
 }
@@ -149,6 +169,42 @@ export function useReceivablesSummary(
       return handleRes<ReceivablesSummary>(res);
     },
     enabled: isUuid(orgId) && Boolean(opts.currency) && (opts.enabled ?? true),
+  });
+}
+
+export function useCustomerBalance(
+  orgId: string,
+  customerId: string,
+  opts: {
+    branchId?: string | null;
+    currency: string;
+    enabled?: boolean;
+  },
+) {
+  return useQuery<CustomerBalance>({
+    queryKey: [
+      "customer-balance",
+      orgId,
+      customerId,
+      opts.branchId ?? null,
+      opts.currency,
+    ],
+    queryFn: async () => {
+      const params = buildReceivableCurrencyParams({
+        currency: opts.currency,
+        branchId: opts.branchId,
+      });
+      const res = await fetchWithAuth(
+        `${baseUrl(orgId)}/customers/${customerId}/balance?${params.toString()}`,
+        { method: "GET" },
+      );
+      return handleRes<CustomerBalance>(res);
+    },
+    enabled:
+      isUuid(orgId) &&
+      isUuid(customerId) &&
+      Boolean(opts.currency) &&
+      (opts.enabled ?? true),
   });
 }
 
