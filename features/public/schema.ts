@@ -1,5 +1,39 @@
 import { z } from "zod";
 
+export const publicInvoiceLineSchema = z.object({
+  description: z.string(),
+  quantity: z.string(),
+  unit_price: z.string(),
+  line_total: z.string(),
+});
+
+export const publicInvoiceSchema = z.object({
+  invoice_number: z.string(),
+  seller: z.record(z.unknown()),
+  buyer: z.record(z.unknown()),
+  issue_date: z.string(),
+  due_date: z.string(),
+  currency: z.string(),
+  line_items: z.array(publicInvoiceLineSchema),
+  subtotal: z.string(),
+  discount_total: z.string(),
+  tax_total: z.string(),
+  charge_total: z.string(),
+  grand_total: z.string(),
+  payment_state: z.string(),
+  collection_state: z.string().nullable().optional(),
+  payment_cta_label: z.string().nullable().optional(),
+  payment_url: z.string().nullable().optional(),
+  outstanding: z.string(),
+  amount_paid: z.string().nullable().optional(),
+  cash_applied: z.string().optional(),
+  withholding_applied: z.string().optional(),
+  other_noncash_applied: z.string().optional(),
+  amount_due: z.string().nullable().optional(),
+  issued_at: z.string().nullable().optional(),
+  created_at: z.string(),
+});
+
 export const publicQuoteLineSchema = z.object({
   description: z.string(),
   quantity: z.string(),
@@ -41,5 +75,6 @@ export const publicAcceptanceSchema = z.object({
   expires_at: z.string().nullable().optional(),
 }).strict();
 
+export type PublicInvoice = z.infer<typeof publicInvoiceSchema>;
 export type PublicQuote = z.infer<typeof publicQuoteSchema>;
 export type PublicAcceptance = z.infer<typeof publicAcceptanceSchema>;

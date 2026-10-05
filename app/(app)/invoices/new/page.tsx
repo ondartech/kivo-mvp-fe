@@ -25,6 +25,7 @@ import {
 } from "@/features/tax/document";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 
 function localDate(offsetDays = 0) {
   const value = new Date();
@@ -60,6 +61,9 @@ export default function NewInvoicePage() {
   const [unitPrice, setUnitPrice] = useState("");
   const [issueDate, setIssueDate] = useState(localDate());
   const [dueDate, setDueDate] = useState(localDate(14));
+
+  const { currency, setCurrency, currencyValid } =
+    useOrganizationCurrencySelection(orgId);
 
   const createBranchId = resolveInvoiceCreateBranchId(
     branchAccess.data,
@@ -97,14 +101,14 @@ export default function NewInvoicePage() {
   });
 
   const previewTotals = async () => {
-    if (!description.trim() || !issueDate || !lineInputAmount) return;
+    if (!description.trim() || !issueDate || !lineInputAmount || !currencyValid) return;
     try {
       await preview.mutateAsync({
         line_items: [currentLine()],
         issue_date: issueDate,
         discount_total: "0",
         charge_total: "0",
-        currency: "NGN",
+        currency,
       });
     } catch {
       // React Query retains the authoritative API error for inline display.
@@ -113,7 +117,7 @@ export default function NewInvoicePage() {
 
   const saveDraft = async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!orgId || !customerId || !description.trim() || !dueDate || !issueDate) {
+    if (!orgId || !customerId || !description.trim() || !dueDate || !issueDate || !currencyValid) {
       return;
     }
     if (!createBranchId) return;
@@ -125,7 +129,7 @@ export default function NewInvoicePage() {
       customer_id: customerId,
       issue_date: issueDate,
       due_date: dueDate,
-      currency: "NGN",
+      currency,
       discount_total: "0",
       charge_total: "0",
       line_items: [line],
@@ -144,6 +148,7 @@ export default function NewInvoicePage() {
         description.trim() &&
         issueDate &&
         dueDate &&
+        currencyValid &&
         lineInputAmount,
     ) && !createInvoice.isPending;
 
@@ -279,6 +284,24 @@ export default function NewInvoicePage() {
               </div>
 
               <div>
+                <Label htmlFor="invoice-currency">Currency *</Label>
+                <Input
+                  id="invoice-currency"
+                  value={currency}
+                  maxLength={3}
+                  onChange={(event) => {
+                    setCurrency(event.target.value.toUpperCase());
+                    preview.reset();
+                  }}
+                  className="mt-1 uppercase"
+                  placeholder="USD"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Prefilled from the organization commercial currency. You can change it before issue.
+                </p>
+              </div>
+
+              <div>
                 <Label htmlFor="description">Description</Label>
                 <Input
                   id="description"
@@ -291,7 +314,7 @@ export default function NewInvoicePage() {
 
               {mode === "quick" ? (
                 <div>
-                  <Label htmlFor="amount">Amount (NGN)</Label>
+                  <Label htmlFor="amount">Amount ({currency || "—"})</Label>
                   <Input
                     id="amount"
                     inputMode="decimal"
@@ -325,7 +348,7 @@ export default function NewInvoicePage() {
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label htmlFor="unit-price">Unit price (NGN)</Label>
+                      <Label htmlFor="unit-price">Unit price ({currency || "—"})</Label>
                       <Input
                         id="unit-price"
                         inputMode="decimal"
@@ -437,7 +460,7 @@ export default function NewInvoicePage() {
                     <span className="text-muted-foreground">Subtotal</span>
                     <MoneyAmount
                       amount={preview.data.subtotal}
-                      currency="NGN"
+                      currency={currency}
                       emphasis="table"
                     />
                   </div>
@@ -445,7 +468,7 @@ export default function NewInvoicePage() {
                     <span className="text-muted-foreground">Tax</span>
                     <MoneyAmount
                       amount={preview.data.tax_total}
-                      currency="NGN"
+                      currency={currency}
                       emphasis="table"
                     />
                   </div>
@@ -453,7 +476,7 @@ export default function NewInvoicePage() {
                     <span>Total</span>
                     <MoneyAmount
                       amount={preview.data.grand_total}
-                      currency="NGN"
+                      currency={currency}
                       emphasis="table"
                     />
                   </div>
@@ -471,7 +494,7 @@ export default function NewInvoicePage() {
                 <div>
                   <MoneyAmount
                     amount={lineInputAmount || "0"}
-                    currency="NGN"
+                    currency={currency}
                     emphasis="table"
                   />
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -485,7 +508,7 @@ export default function NewInvoicePage() {
                 type="button"
                 variant="outline"
                 className="w-full"
-                disabled={!lineInputAmount || !description.trim() || preview.isPending}
+                disabled={!lineInputAmount || !description.trim() || !currencyValid || preview.isPending}
                 loading={preview.isPending}
                 onClick={() => void previewTotals()}
               >

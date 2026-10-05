@@ -1,10 +1,10 @@
-import { MoneyAmount, CompactMoney } from "@/components/kivo/money-amount";
+import { MoneyAmount } from "@/components/kivo/money-amount";
 import { cn } from "@/lib/utils";
 
 interface Metric {
   label: string;
   amount: string;
-  currency?: string;
+  currency: string;
   hint?: string;
   emphasis?: "primary" | "secondary";
 }
@@ -28,12 +28,12 @@ export function FinancialSummary({ metrics, className }: { metrics: Metric[]; cl
 export function OutstandingAmount({
   amount,
   dueLabel,
-  currency = "NGN",
+  currency,
   className,
 }: {
   amount: string;
   dueLabel?: string;
-  currency?: string;
+  currency: string;
   className?: string;
 }) {
   return (

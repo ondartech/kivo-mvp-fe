@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOperatingBranches } from "@/features/organization/api";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 import {
   useBankAccounts,
   useCreatePaymentRunTemplate,
@@ -95,6 +96,8 @@ function PaymentRunTemplateSettings({ orgId }: { orgId: string }) {
   const activeBranchId = useActiveBranchId();
   const branches = useOperatingBranches(orgId);
   const bankAccounts = useBankAccounts(orgId);
+  const { currency, setCurrency, currencyValid } =
+    useOrganizationCurrencySelection(orgId);
   const templates = usePaymentRunTemplates(orgId);
   const create = useCreatePaymentRunTemplate(orgId);
   const suspend = useSuspendPaymentRunTemplate(orgId);
@@ -122,14 +125,26 @@ function PaymentRunTemplateSettings({ orgId }: { orgId: string }) {
     () =>
       (bankAccounts.data ?? []).filter(
         (account) =>
-          account.status === "ACTIVE" && account.currency === "NGN",
+          account.status === "ACTIVE" && account.currency === currency,
       ),
+    [bankAccounts.data, currency],
+  );
+
+  const availableCurrencies = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (bankAccounts.data ?? [])
+            .filter((account) => account.status === "ACTIVE")
+            .map((account) => account.currency),
+        ),
+      ).sort(),
     [bankAccounts.data],
   );
 
   const createTemplate = async () => {
-    if (!name.trim() || !fundingAccountId) {
-      toast.error("Name and funding account are required.");
+    if (!name.trim() || !fundingAccountId || !currencyValid) {
+      toast.error("Name, execution currency, and funding account are required.");
       return;
     }
 
@@ -156,7 +171,7 @@ function PaymentRunTemplateSettings({ orgId }: { orgId: string }) {
         ),
       },
       funding_bank_account_id: fundingAccountId,
-      currency: "NGN",
+      currency,
       source_filters: {
         obligation_types: selectedObligationTypes,
         source_types:
@@ -194,7 +209,7 @@ function PaymentRunTemplateSettings({ orgId }: { orgId: string }) {
 
       <Card>
         <CardContent className="space-y-4 p-5">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <div>
               <Label htmlFor="template-name">Template name</Label>
               <Input
@@ -204,6 +219,25 @@ function PaymentRunTemplateSettings({ orgId }: { orgId: string }) {
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Monthly supplier payments"
               />
+            </div>
+            <div>
+              <Label htmlFor="template-currency">Execution currency</Label>
+              <select
+                id="template-currency"
+                className={selectClassName}
+                value={currency}
+                onChange={(event) => {
+                  setCurrency(event.target.value);
+                  setFundingAccountId("");
+                }}
+              >
+                <option value="">Select currency</option>
+                {availableCurrencies.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label htmlFor="template-funding">Funding account</Label>

@@ -39,6 +39,18 @@ export function resolveReceivableReadScope(
   };
 }
 
+export function buildReceivableCurrencyParams(input: {
+  currency: string;
+  branchId?: string | null;
+}): URLSearchParams {
+  if (!/^[A-Z]{3}$/.test(input.currency)) {
+    throw new Error("Receivables reporting requires an explicit ISO currency.");
+  }
+  const params = new URLSearchParams({ currency: input.currency });
+  if (input.branchId) params.set("branch_id", input.branchId);
+  return params;
+}
+
 export function buildReceivableListParams(input: {
   branchId?: string | null;
   collectionState?: string | null;
