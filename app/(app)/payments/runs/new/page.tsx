@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { resolvePaymentRunSettlementValuation } from "@/features/fx/api";
 import { useOperatingBranches, useOrganization } from "@/features/organization/api";
 import {
   addPaymentRunItemCommand,
@@ -70,7 +71,11 @@ export default function NewPaymentRunPage() {
   const createRun = useCreatePaymentRun(orgId);
   const bankAccounts = useBankAccounts(orgId);
   const activeAccounts = useMemo(
-    () => (bankAccounts.data ?? []).filter((account) => account.status === "ACTIVE"),
+    () =>
+      (bankAccounts.data ?? []).filter(
+        (account) =>
+          account.status === "ACTIVE" && Boolean(account.holder_legal_entity_id),
+      ),
     [bankAccounts.data],
   );
   const availableCurrencies = useMemo(
@@ -97,42 +102,57 @@ export default function NewPaymentRunPage() {
     if (availableCurrencies.length === 1) setCurrency(availableCurrencies[0]);
   }, [availableCurrencies, currency, organization.data?.default_currency]);
 
+  const activeBankAccounts = useMemo(
+    () => activeAccounts.filter((account) => account.currency === currency),
+    [activeAccounts, currency],
+  );
+  const selectedFundingAccount = useMemo(
+    () =>
+      activeBankAccounts.find((account) => account.id === fundingAccountId) ?? null,
+    [activeBankAccounts, fundingAccountId],
+  );
+  const payerLegalEntityId = selectedFundingAccount?.holder_legal_entity_id ?? "";
+
   const openObligations = usePaymentObligations(orgId, {
     status: "OPEN",
     controlStatus: "AVAILABLE",
     branchId: branchId || null,
-    currency,
     limit: 100,
-    enabled: currencyValid,
+    enabled: currencyValid && Boolean(payerLegalEntityId),
   });
   const partiallySettledObligations = usePaymentObligations(orgId, {
     status: "PARTIALLY_SETTLED",
     controlStatus: "AVAILABLE",
     branchId: branchId || null,
-    currency,
     limit: 100,
-    enabled: currencyValid,
+    enabled: currencyValid && Boolean(payerLegalEntityId),
   });
   const availableObligations = useMemo(
-    () => [
-      ...(openObligations.data?.data ?? []),
-      ...(partiallySettledObligations.data?.data ?? []),
+    () =>
+      [
+        ...(openObligations.data?.data ?? []),
+        ...(partiallySettledObligations.data?.data ?? []),
+      ].filter(
+        (obligation) => obligation.payer_legal_entity_id === payerLegalEntityId,
+      ),
+    [
+      openObligations.data?.data,
+      partiallySettledObligations.data?.data,
+      payerLegalEntityId,
     ],
-    [openObligations.data?.data, partiallySettledObligations.data?.data],
-  );
-  const activeBankAccounts = useMemo(
-    () => activeAccounts.filter((account) => account.currency === currency),
-    [activeAccounts, currency],
   );
 
   const selectedItems = useMemo(
     () =>
       Object.entries(selected)
         .filter(([, amount]) => amount.trim().length > 0)
-        .map(([payment_obligation_id, amount]) => ({
+        .map(([payment_obligation_id, obligation_amount]) => ({
           payment_obligation_id,
-          amount,
-        })),
+          obligation_amount,
+        }))
+        .sort((left, right) =>
+          left.payment_obligation_id.localeCompare(right.payment_obligation_id),
+        ),
     [selected],
   );
 
@@ -167,8 +187,8 @@ export default function NewPaymentRunPage() {
       toast.error("Select an execution currency.");
       return;
     }
-    if (!fundingAccountId) {
-      toast.error("Select the funding bank account.");
+    if (!fundingAccountId || !payerLegalEntityId) {
+      toast.error("Select a funding bank account owned by a payer LegalEntity.");
       return;
     }
     if (selectedItems.length === 0) {
@@ -176,11 +196,42 @@ export default function NewPaymentRunPage() {
       return;
     }
     try {
+      const valuationAsOf = new Date().toISOString();
+      const items = [];
+      for (const selectedItem of selectedItems) {
+        const obligation = availableObligations.find(
+          (candidate) =>
+            candidate.id === selectedItem.payment_obligation_id,
+        );
+        if (!obligation) {
+          throw new Error(
+            "A selected Payment Obligation is no longer available in this payer scope.",
+          );
+        }
+        const snapshot =
+          obligation.currency === currency
+            ? null
+            : await resolvePaymentRunSettlementValuation(orgId, {
+                legalEntityId: payerLegalEntityId,
+                paymentObligationId: obligation.id,
+                paymentObligationVersion: obligation.version,
+                sourceCurrency: obligation.currency,
+                settlementCurrency: currency,
+                asOf: valuationAsOf,
+              });
+        items.push({
+          payment_obligation_id: selectedItem.payment_obligation_id,
+          obligation_amount: selectedItem.obligation_amount,
+          settlement_valuation_snapshot_id: snapshot?.id ?? null,
+        });
+      }
+
       await preview.mutateAsync({
-        currency,
+        payer_legal_entity_id: payerLegalEntityId,
+        settlement_currency: currency,
         funding_bank_account_id: fundingAccountId,
         scheduled_execution_date: executionDate || null,
-        items: selectedItems,
+        items,
       });
     } catch (error) {
       toast.error(paymentOperationsErrorMessage(error));
@@ -267,6 +318,7 @@ export default function NewPaymentRunPage() {
               value={fundingAccountId}
               onChange={(event) => {
                 setFundingAccountId(event.target.value);
+                setSelected({});
                 preview.reset();
               }}
             >
@@ -295,7 +347,12 @@ export default function NewPaymentRunPage() {
         </CardContent>
       </Card>
 
-      {(openObligations.isLoading || partiallySettledObligations.isLoading) ? (
+      {!fundingAccountId ? (
+        <EmptyState
+          title="Select a funding account"
+          description="Choose the settlement currency and payer LegalEntity funding account before selecting Payment Obligations. Obligations may be in other currencies."
+        />
+      ) : (openObligations.isLoading || partiallySettledObligations.isLoading) ? (
         <div className="space-y-2">
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
@@ -322,7 +379,7 @@ export default function NewPaymentRunPage() {
       ) : availableObligations.length === 0 ? (
         <EmptyState
           title="No available obligations"
-          description="There are no open, available Payment Obligations in the selected scope and currency."
+          description="There are no open, available Payment Obligations for this payer LegalEntity and Branch scope. Obligation currency may differ from the run settlement currency."
         />
       ) : (
         <div className="overflow-hidden rounded-lg border bg-surface">
@@ -334,7 +391,7 @@ export default function NewPaymentRunPage() {
                 <TableHead>Beneficiary</TableHead>
                 <TableHead>Due</TableHead>
                 <TableHead className="text-right">Outstanding</TableHead>
-                <TableHead className="w-48">Run amount</TableHead>
+                <TableHead className="w-48">Obligation amount</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -425,9 +482,14 @@ export default function NewPaymentRunPage() {
             <div className="mt-5 space-y-4 border-t pt-5">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <div className="text-xs text-muted-foreground">Run total</div>
+                  <div className="text-xs text-muted-foreground">
+                    Settlement total
+                  </div>
                   <div className="text-xl font-semibold tabular-nums">
-                    {formatMoney(preview.data.total_amount, preview.data.currency)}
+                    {formatMoney(
+                      preview.data.total_settlement_amount,
+                      preview.data.settlement_currency,
+                    )}
                   </div>
                 </div>
                 <div>
@@ -481,8 +543,19 @@ export default function NewPaymentRunPage() {
                     </div>
                     <div className="text-right">
                       <div className="font-medium tabular-nums">
-                        {formatMoney(item.requested_amount, preview.data.currency)}
+                        {formatMoney(item.obligation_amount, item.obligation_currency)}
                       </div>
+                      {item.obligation_currency !== item.settlement_currency ? (
+                        <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+                          → {formatMoney(item.settlement_amount, item.settlement_currency)}
+                          {" · FX evidence "}
+                          {item.settlement_valuation_snapshot_id?.slice(0, 8)}
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          Same-currency settlement · no FX snapshot
+                        </div>
+                      )}
                       <Badge variant={item.eligible ? "success" : "critical"}>
                         {item.eligible ? "Eligible" : "Blocked"}
                       </Badge>
@@ -503,10 +576,11 @@ export default function NewPaymentRunPage() {
           !preview.data?.items.some((item) => !item.eligible)
         }
         name={name}
-        currency={currency}
+        payerLegalEntityId={payerLegalEntityId}
+        settlementCurrency={currency}
         fundingAccountId={fundingAccountId}
         executionDate={executionDate}
-        selectedItems={selectedItems}
+        previewItems={preview.data?.items ?? []}
         creating={creating}
         setCreating={setCreating}
         router={router}
@@ -521,10 +595,11 @@ function CreateRunCommit({
   previewReady,
   previewEligible,
   name,
-  currency,
+  payerLegalEntityId,
+  settlementCurrency,
   fundingAccountId,
   executionDate,
-  selectedItems,
+  previewItems,
   creating,
   setCreating,
   router,
@@ -534,10 +609,16 @@ function CreateRunCommit({
   previewReady: boolean;
   previewEligible: boolean;
   name: string;
-  currency: string;
+  payerLegalEntityId: string;
+  settlementCurrency: string;
   fundingAccountId: string;
   executionDate: string;
-  selectedItems: Array<{ payment_obligation_id: string; amount: string }>;
+  previewItems: Array<{
+    payment_obligation_id: string;
+    obligation_amount: string;
+    settlement_amount: string;
+    settlement_valuation_snapshot_id: string | null;
+  }>;
   creating: boolean;
   setCreating: (value: boolean) => void;
   router: ReturnType<typeof useRouter>;
@@ -555,7 +636,8 @@ function CreateRunCommit({
       const run = await createRun.mutateAsync({
         input: {
           name: name.trim() || null,
-          currency,
+          payer_legal_entity_id: payerLegalEntityId,
+          settlement_currency: settlementCurrency,
           funding_bank_account_id: fundingAccountId,
           scheduled_execution_date: executionDate || null,
         },
@@ -563,9 +645,13 @@ function CreateRunCommit({
       });
       createdRunId = run.id;
 
-      for (const item of selectedItems) {
+      for (const item of previewItems) {
         await addPaymentRunItemCommand(orgId, run.id, {
-          ...item,
+          payment_obligation_id: item.payment_obligation_id,
+          obligation_amount: item.obligation_amount,
+          settlement_amount: item.settlement_amount,
+          settlement_valuation_snapshot_id:
+            item.settlement_valuation_snapshot_id,
           idempotencyKey: crypto.randomUUID(),
         });
       }
