@@ -77,5 +77,9 @@ describe("FE-BRN-004 dashboard Branch context", () => {
 
     const lag = buildDashboardParams({ branchId: "lag", currency: "NGN" });
     expect(lag.get("branch_id")).toBe("lag");
+
+    expect(() =>
+      buildDashboardParams({ branchId: null, currency: "" }),
+    ).toThrow(/explicit ISO currency/);
   });
 });
