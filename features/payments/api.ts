@@ -154,7 +154,9 @@ export function usePaymentObligations(
       if (opts.status) params.set("status", opts.status);
       if (opts.controlStatus) params.set("control_status", opts.controlStatus);
       if (opts.branchId) params.set("branch_id", opts.branchId);
-      if (opts.currency) params.set("currency", opts.currency);
+      if (opts.settlementCurrency) {
+        params.set("settlement_currency", opts.settlementCurrency);
+      }
       if (opts.cursor) params.set("cursor", opts.cursor);
       params.set("limit", String(opts.limit ?? 50));
       const response = await fetchWithAuth(
@@ -248,7 +250,7 @@ export function usePaymentRuns(
   orgId: string,
   opts: {
     status?: string | null;
-    currency?: string | null;
+    settlementCurrency?: string | null;
     fundingBankAccountId?: string | null;
     archiveState?: "active" | "archived" | "all";
     cursor?: string | null;
@@ -260,7 +262,7 @@ export function usePaymentRuns(
       "payment-runs",
       orgId,
       opts.status ?? null,
-      opts.currency ?? null,
+      opts.settlementCurrency ?? null,
       opts.fundingBankAccountId ?? null,
       opts.archiveState ?? "active",
       opts.cursor ?? null,
@@ -401,13 +403,30 @@ export function usePaymentReconciliationQueue(
   });
 }
 
+export type PaymentRunWithholdingDecisionContextInput = {
+  counterparty_relationship: "RELATED" | "UNRELATED";
+  recipient_has_valid_tin: boolean;
+  deductor_is_small_company?: boolean | null;
+  wht_calendar_month_value?: string | null;
+};
+
+export type PaymentRunPreviewItemInput = {
+  payment_obligation_id: string;
+  obligation_amount: string;
+  settlement_valuation_snapshot_id?: string | null;
+  withholding_expectation_id?: string | null;
+  withholding_taxable_base?: string | null;
+  withholding_decision_context?: PaymentRunWithholdingDecisionContextInput | null;
+};
+
 export function usePreviewPaymentRun(orgId: string) {
   return useMutation({
     mutationFn: async (input: {
-      currency: string;
+      payer_legal_entity_id: string;
+      settlement_currency: string;
       funding_bank_account_id: string;
       scheduled_execution_date?: string | null;
-      items: Array<{ payment_obligation_id: string; amount: string }>;
+      items: PaymentRunPreviewItemInput[];
     }) => {
       requireOrganizationId(orgId);
       const response = await fetchWithAuth(
@@ -431,7 +450,9 @@ export function useCreatePaymentRun(orgId: string) {
     mutationFn: async (payload: {
       input: {
         name?: string | null;
-        currency: string;
+        payer_legal_entity_id: string;
+        settlement_currency: string;
+        funding_source_type?: "BANK_ACCOUNT";
         funding_bank_account_id: string;
         scheduled_execution_date?: string | null;
       };
@@ -441,7 +462,10 @@ export function useCreatePaymentRun(orgId: string) {
       const response = await fetchWithAuth(`${baseUrl(orgId)}/payment-runs`, {
         method: "POST",
         headers: jsonHeaders(payload.idempotencyKey),
-        body: JSON.stringify(payload.input),
+        body: JSON.stringify({
+          ...payload.input,
+          funding_source_type: payload.input.funding_source_type ?? "BANK_ACCOUNT",
+        }),
       });
       return parseResponse(response, (value) => paymentRunSchema.parse(value));
     },
@@ -457,23 +481,48 @@ export async function addPaymentRunItemCommand(
   paymentRunId: string,
   payload: {
     payment_obligation_id: string;
-    amount: string;
+    obligation_amount: string;
+    settlement_amount: string;
+    settlement_valuation_snapshot_id?: string | null;
+    withholding_expectation_id?: string | null;
+    withholding_taxable_base?: string | null;
+    withholding_decision_context?: PaymentRunWithholdingDecisionContextInput | null;
     idempotencyKey: string;
   },
 ) {
   requireOrganizationId(orgId);
+  const { idempotencyKey, ...input } = payload;
   const response = await fetchWithAuth(
     `${baseUrl(orgId)}/payment-runs/${paymentRunId}/items`,
     {
       method: "POST",
-      headers: jsonHeaders(payload.idempotencyKey),
-      body: JSON.stringify({
-        payment_obligation_id: payload.payment_obligation_id,
-        amount: payload.amount,
-      }),
+      headers: jsonHeaders(idempotencyKey),
+      body: JSON.stringify(input),
     },
   );
   return parseResponse(response, (value) => paymentRunSchema.parse(value));
+}
+
+export function useAddPaymentRunItem(orgId: string, paymentRunId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      payment_obligation_id: string;
+      obligation_amount: string;
+      settlement_amount: string;
+      settlement_valuation_snapshot_id?: string | null;
+      withholding_expectation_id?: string | null;
+      withholding_taxable_base?: string | null;
+      withholding_decision_context?: PaymentRunWithholdingDecisionContextInput | null;
+      idempotencyKey: string;
+    }) => addPaymentRunItemCommand(orgId, paymentRunId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["payment-run", orgId, paymentRunId],
+      });
+      invalidatePaymentOperations(queryClient, orgId);
+    },
+  });
 }
 
 export function useUpdatePaymentRun(orgId: string, paymentRunId: string) {
@@ -502,23 +551,6 @@ export function useUpdatePaymentRun(orgId: string, paymentRunId: string) {
           return { ...(current as Record<string, unknown>), run };
         },
       );
-      invalidatePaymentOperations(queryClient, orgId);
-    },
-  });
-}
-
-export function useAddPaymentRunItem(orgId: string, paymentRunId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: {
-      payment_obligation_id: string;
-      amount: string;
-      idempotencyKey: string;
-    }) => addPaymentRunItemCommand(orgId, paymentRunId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["payment-run", orgId, paymentRunId],
-      });
       invalidatePaymentOperations(queryClient, orgId);
     },
   });
