@@ -6,6 +6,11 @@ const root = resolve(process.cwd());
 const sourceRoots = ["app", "components", "features", "hooks", "lib"];
 const extensions = new Set([".ts", ".tsx", ".js", ".jsx"]);
 
+const explicitNgnExampleAllowlist = new Set([
+  "app/page.tsx",
+  "app/(app)/settings/subscription/page.tsx",
+]);
+
 const forbidden = [
   ["nullish NGN fallback", /\?\?\s*["']NGN["']/g],
   ["boolean NGN fallback", /\|\|\s*["']NGN["']/g],
@@ -55,14 +60,30 @@ if (/currency\s*=\s*["']NGN["']/.test(moneyAmountSource)) {
 for (const sourceRoot of sourceRoots) {
   for (const file of filesUnder(sourceRoot)) {
     const content = readFileSync(file, "utf8");
+    const relativePath = relative(root, file);
+    const explicitExample = explicitNgnExampleAllowlist.has(relativePath);
+
+    if (content.includes("₦") && !explicitExample) {
+      violations.push(
+        `${relativePath}: literal naira symbol is only allowed in reviewed explicit NGN example/pricing surfaces`,
+      );
+    }
+
     for (const [name, pattern] of forbidden) {
+      if (
+        explicitExample &&
+        (name === "hard-coded NGN money formatting" ||
+          name === "hard-coded NGN MoneyAmount prop")
+      ) {
+        continue;
+      }
       pattern.lastIndex = 0;
       let match;
       while ((match = pattern.exec(content)) !== null) {
         const before = content.slice(0, match.index);
         const line = before.split("\n").length;
         violations.push(
-          `${relative(root, file)}:${line}: ${name}: ${match[0].replace(/\s+/g, " ")}`,
+          `${relativePath}:${line}: ${name}: ${match[0].replace(/\s+/g, " ")}`,
         );
         if (match.index === pattern.lastIndex) pattern.lastIndex += 1;
       }
