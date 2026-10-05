@@ -26,18 +26,18 @@ function roundForCurrency(
   const negative = match[1] === "-";
   const integerPart = BigInt(match[2]);
   const rawFraction = match[3] ?? "";
-  const scale = 10n ** BigInt(fractionDigits);
+  const scale = BigInt(10) ** BigInt(fractionDigits);
   const kept =
     fractionDigits === 0
       ? ""
       : rawFraction.slice(0, fractionDigits).padEnd(fractionDigits, "0");
 
   let scaled =
-    integerPart * scale + (kept ? BigInt(kept) : 0n);
+    integerPart * scale + (kept ? BigInt(kept) : BigInt(0));
 
   const firstDiscardedDigit = rawFraction[fractionDigits];
   if (firstDiscardedDigit && firstDiscardedDigit >= "5") {
-    scaled += 1n;
+    scaled += BigInt(1);
   }
 
   const roundedInteger =
