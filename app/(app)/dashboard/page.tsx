@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { MoneyAmount } from "@/components/kivo/money-amount";
@@ -8,9 +8,11 @@ import { PageHeader } from "@/components/kivo/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input, Label } from "@/components/ui/input";
 import { useOrganizationDashboard } from "@/features/dashboard/api";
+import { useFinanceProfile } from "@/features/finance-explorer/api";
 import { resolveDashboardReadScope } from "@/features/dashboard/branching";
-import { useOperatingBranches } from "@/features/organization/api";
+import { useOperatingBranches, useOrganization } from "@/features/organization/api";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
 
@@ -29,7 +31,28 @@ export default function DashboardPage() {
   const orgId = useActiveOrganizationId() ?? "";
   const activeBranchId = useActiveBranchId();
   const branchAccess = useOperatingBranches(orgId);
+  const organization = useOrganization(orgId);
+  const financeProfile = useFinanceProfile(orgId);
+  const [currency, setCurrency] = useState("");
   const scope = resolveDashboardReadScope(branchAccess.data, activeBranchId);
+
+  useEffect(() => {
+    setCurrency("");
+  }, [orgId]);
+
+  useEffect(() => {
+    if (currency) return;
+    const configured =
+      financeProfile.data?.default_presentation_currency ??
+      organization.data?.default_currency;
+    if (configured) setCurrency(configured);
+  }, [
+    currency,
+    financeProfile.data?.default_presentation_currency,
+    organization.data?.default_currency,
+  ]);
+
+  const currencyValid = /^[A-Z]{3}$/.test(currency);
 
   const branchById = useMemo(
     () =>
@@ -41,8 +64,8 @@ export default function DashboardPage() {
 
   const dashboard = useOrganizationDashboard(orgId, {
     branchId: scope.branchId,
-    currency: "NGN",
-    enabled: scope.ready,
+    currency,
+    enabled: scope.ready && currencyValid,
   });
 
   const effectiveBranchId = dashboard.data?.branch_id ?? scope.branchId;
@@ -81,7 +104,17 @@ export default function DashboardPage() {
               : "Organization-wide cash, receivables, commercial pipeline and compliance."
         }
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Presentation currency
+              <Input
+                aria-label="Presentation currency"
+                value={currency}
+                maxLength={3}
+                onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+                className="h-8 w-24 uppercase"
+              />
+            </label>
             <Link href="/app/invoices/new">
               <Button variant="secondary" size="sm">
                 Create invoice
@@ -126,10 +159,19 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-      ) : branchAccess.isLoading || (scope.ready && dashboard.isLoading) ? (
+      ) : branchAccess.isLoading || organization.isLoading || financeProfile.isLoading || (scope.ready && currencyValid && dashboard.isLoading) ? (
         <Card>
           <CardContent className="p-5 text-sm text-muted-foreground">
             Loading dashboard…
+          </CardContent>
+        </Card>
+      ) : !currencyValid ? (
+        <Card>
+          <CardContent className="p-5 text-sm">
+            <div className="font-medium">Choose a presentation currency</div>
+            <p className="mt-1 text-muted-foreground">
+              Use a three-letter ISO currency code. Ondar will not guess a reporting currency.
+            </p>
           </CardContent>
         </Card>
       ) : dashboard.isError ? (

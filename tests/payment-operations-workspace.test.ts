@@ -21,6 +21,8 @@ const ids = {
   org: "11111111-1111-4111-8111-111111111111",
   run: "22222222-2222-4222-8222-222222222222",
   bank: "33333333-3333-4333-8333-333333333333",
+  legalEntity: "88888888-8888-4888-8888-888888888888",
+  snapshot: "99999999-9999-4999-8999-999999999999",
   user: "44444444-4444-4444-8444-444444444444",
   item: "55555555-5555-4555-8555-555555555555",
   obligation: "66666666-6666-4666-8666-666666666666",
@@ -31,11 +33,15 @@ function run(overrides: Record<string, unknown> = {}) {
   return paymentRunSchema.parse({
     id: ids.run,
     organization_id: ids.org,
+    payer_legal_entity_id: ids.legalEntity,
     run_number: "PAYRUN-000009",
     name: "Supplier run",
-    currency: "NGN",
+    settlement_currency: "NGN",
+    funding_source_type: "BANK_ACCOUNT",
     funding_bank_account_id: ids.bank,
-    funding_account_snapshot: {},
+    funding_provider_transaction_id: null,
+    funding_provider_key: null,
+    funding_source_snapshot: {},
     scheduled_execution_date: "2026-09-30",
     status: "DRAFT",
     version: 1,
@@ -57,7 +63,10 @@ function run(overrides: Record<string, unknown> = {}) {
     created_by_user_id: ids.user,
     created_at: "2026-09-26T12:00:00Z",
     updated_at: "2026-09-26T12:00:00Z",
-    total_amount: "125000.000000",
+    total_settlement_amount: "125000.000000",
+    obligation_totals: [{ currency: "NGN", amount: "125000.000000" }],
+    cash_obligation_totals: [{ currency: "NGN", amount: "125000.000000" }],
+    withholding_totals: [],
     item_count: 1,
     branch_ids: [],
     items: [
@@ -65,8 +74,16 @@ function run(overrides: Record<string, unknown> = {}) {
         id: ids.item,
         payment_obligation_id: ids.obligation,
         branch_id: null,
-        allocated_amount: "125000.000000",
-        currency: "NGN",
+        obligation_amount: "125000.000000",
+        obligation_currency: "NGN",
+        withholding_expectation_id: null,
+        withholding_taxable_base: null,
+        withholding_planned_amount: "0.000000",
+        cash_obligation_amount: "125000.000000",
+        settlement_amount: "125000.000000",
+        settlement_currency: "NGN",
+        settlement_valuation_snapshot_id: null,
+        withholding_plan_data: {},
         obligation_outstanding_at_reservation: "125000.000000",
         obligation_version_at_reservation: 1,
         source_snapshot: {},
@@ -95,6 +112,34 @@ describe("PAYRUN-FE-001 Payment Operations workspace", () => {
   it("keeps authoritative money as decimal strings", () => {
     expect(decimalStringSchema.parse("125000.000000")).toBe("125000.000000");
     expect(() => decimalStringSchema.parse(125000)).toThrow();
+  });
+
+  it("preserves two-sided cross-currency Payment Run economics", () => {
+    const crossCurrency = run({
+      settlement_currency: "USD",
+      total_settlement_amount: "100.000000",
+      obligation_totals: [{ currency: "EUR", amount: "92.000000" }],
+      cash_obligation_totals: [{ currency: "EUR", amount: "92.000000" }],
+      items: [
+        {
+          ...run().items[0],
+          obligation_amount: "92.000000",
+          obligation_currency: "EUR",
+          cash_obligation_amount: "92.000000",
+          settlement_amount: "100.000000",
+          settlement_currency: "USD",
+          settlement_valuation_snapshot_id: ids.snapshot,
+          destination_currency: "USD",
+        },
+      ],
+    });
+
+    expect(crossCurrency.settlement_currency).toBe("USD");
+    expect(crossCurrency.items[0].obligation_currency).toBe("EUR");
+    expect(crossCurrency.items[0].settlement_amount).toBe("100.000000");
+    expect(crossCurrency.items[0].settlement_valuation_snapshot_id).toBe(
+      ids.snapshot,
+    );
   });
 
   it("only submits a populated draft with executable destinations", () => {

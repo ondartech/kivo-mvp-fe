@@ -54,6 +54,9 @@ export function PublicQuoteView({ token }: { token: string }) {
           <div className="mt-1 text-sm text-muted-foreground">
             {quote.seller_name} → {quote.customer_name}
           </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Currency · {quote.currency}
+          </div>
         </div>
         <Badge>{quote.status_label}</Badge>
       </div>

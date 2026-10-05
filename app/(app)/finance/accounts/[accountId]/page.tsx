@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
 import { PageHeader } from "@/components/kivo/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -16,6 +17,7 @@ import {
 import {
   useAccountActivity,
   useFinanceAccount,
+  useFinanceProfile,
 } from "@/features/finance-explorer/api";
 import { resolveFinanceReadScope } from "@/features/finance-explorer/branching";
 import {
@@ -46,6 +48,10 @@ export default function FinanceAccountDetailPage() {
   const financeBranches = useOperatingBranches(organizationId, {
     permissionCode: "finance:read",
   });
+  const financeProfile = useFinanceProfile(organizationId);
+  const [presentationCurrency, setPresentationCurrency] = useState("");
+  const presentationCurrencyValid =
+    presentationCurrency === "" || /^[A-Z]{3}$/.test(presentationCurrency);
   const scope = resolveFinanceReadScope(financeBranches.data, activeBranchId);
 
   const branchById = useMemo(
@@ -59,7 +65,8 @@ export default function FinanceAccountDetailPage() {
   const account = useFinanceAccount(organizationId, accountId);
   const activity = useAccountActivity(organizationId, accountId, {
     branchId: scope.branchId,
-    enabled: scope.ready,
+    presentationCurrency: presentationCurrency || null,
+    enabled: scope.ready && presentationCurrencyValid,
   });
 
   if (!organizationId) {
@@ -181,6 +188,8 @@ export default function FinanceAccountDetailPage() {
   const protection = accountProtectionLabels(record);
   const canOpenJournalDetail =
     financeBranches.data?.organization_wide === true;
+  const translated = first.translation_context.translated;
+  const reportingEvidence = first.translation_context.rate_evidence;
 
   return (
     <div className="space-y-6">
@@ -189,9 +198,26 @@ export default function FinanceAccountDetailPage() {
         title={`${record.code} · ${record.name}`}
         description={`${humanize(record.account_class)} · ${humanize(record.account_type)} · ${humanize(record.normal_balance)} normal balance`}
         actions={
-          <Button variant="outline" asChild>
-            <Link href="/app/finance/accounts">All accounts</Link>
-          </Button>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Presentation currency
+              <Input
+                aria-label="Account activity presentation currency"
+                value={presentationCurrency}
+                maxLength={3}
+                placeholder={
+                  financeProfile.data?.default_presentation_currency ?? "Optional"
+                }
+                onChange={(event) =>
+                  setPresentationCurrency(event.target.value.toUpperCase())
+                }
+                className="h-8 w-28 uppercase"
+              />
+            </label>
+            <Button variant="outline" asChild>
+              <Link href="/app/finance/accounts">All accounts</Link>
+            </Button>
+          </div>
         }
       />
 
@@ -225,6 +251,15 @@ export default function FinanceAccountDetailPage() {
                 first.opening_credit,
                 first.base_currency,
               )}
+              {translated ? (
+                <div className="mt-1 text-xs font-medium text-muted-foreground">
+                  {balanceText(
+                    first.presentation_opening_debit,
+                    first.presentation_opening_credit,
+                    first.presentation_currency,
+                  )}
+                </div>
+              ) : null}
             </div>
           </CardContent>
         </Card>
@@ -239,6 +274,12 @@ export default function FinanceAccountDetailPage() {
             <div className="text-sm tabular-nums">
               CR {formatMoney(first.activity_credit, first.base_currency)}
             </div>
+            {translated ? (
+              <div className="mt-1 text-xs tabular-nums text-muted-foreground">
+                DR {formatMoney(first.presentation_activity_debit, first.presentation_currency)} · CR{" "}
+                {formatMoney(first.presentation_activity_credit, first.presentation_currency)}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
         <Card>
@@ -252,10 +293,63 @@ export default function FinanceAccountDetailPage() {
                 first.closing_credit,
                 first.base_currency,
               )}
+              {translated ? (
+                <div className="mt-1 text-xs font-medium text-muted-foreground">
+                  {balanceText(
+                    first.presentation_closing_debit,
+                    first.presentation_closing_credit,
+                    first.presentation_currency,
+                  )}
+                </div>
+              ) : null}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {translated ? (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">Reporting FX trace</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {first.base_currency} functional books → {first.presentation_currency} presentation ·{" "}
+                  {first.translation_context.translation_basis.replaceAll("_", " ")}
+                </div>
+              </div>
+              <Badge variant="info">
+                {humanize(first.translation_context.report_classification)}
+              </Badge>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {reportingEvidence.map((evidence) => (
+                <div
+                  key={evidence.legal_entity_id}
+                  className="rounded-md border px-3 py-2 text-xs"
+                >
+                  <div className="font-medium">
+                    {evidence.functional_currency} → {evidence.presentation_currency}
+                    {evidence.effective_rate ? ` · rate ${evidence.effective_rate}` : ""}
+                  </div>
+                  <div className="mt-1 text-muted-foreground">
+                    {evidence.policy_version ?? "same-currency"} · snapshot{" "}
+                    {shortIdentifier(evidence.reporting_rate_snapshot_id)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="text-xs text-muted-foreground">
+          Functional books are shown by default. Enter a presentation currency to
+          request an FX-013 reporting projection.
+          {financeProfile.data?.default_presentation_currency
+            ? ` Configured presentation preference: ${financeProfile.data.default_presentation_currency}.`
+            : ""}
+        </div>
+      )}
 
       <div className="text-xs text-muted-foreground">
         Accounting range:{" "}
@@ -331,9 +425,19 @@ export default function FinanceAccountDetailPage() {
                     <TableCell>{line.description}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(line.debit_base, first.base_currency)}
+                      {translated ? (
+                        <div className="text-xs text-muted-foreground">
+                          {formatMoney(line.presentation_debit, first.presentation_currency)}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(line.credit_base, first.base_currency)}
+                      {translated ? (
+                        <div className="text-xs text-muted-foreground">
+                          {formatMoney(line.presentation_credit, first.presentation_currency)}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(line.running_balance, first.base_currency)}{" "}
@@ -342,6 +446,19 @@ export default function FinanceAccountDetailPage() {
                         : line.running_balance_side === "DEBIT"
                           ? "DR"
                           : "CR"}
+                      {translated ? (
+                        <div className="text-xs text-muted-foreground">
+                          {formatMoney(
+                            line.presentation_running_balance,
+                            first.presentation_currency,
+                          )}{" "}
+                          {line.presentation_running_balance_side === "ZERO"
+                            ? ""
+                            : line.presentation_running_balance_side === "DEBIT"
+                              ? "DR"
+                              : "CR"}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">

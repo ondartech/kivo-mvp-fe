@@ -31,6 +31,7 @@ import {
 import type { PaymentObligation } from "@/features/payments/schema";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 import { formatMoney } from "@/lib/money";
 
 const selectClassName =
@@ -57,6 +58,12 @@ function beneficiaryLabel(obligation: PaymentObligation): string {
 export default function PaymentObligationsPage() {
   const orgId = useActiveOrganizationId() ?? "";
   const branchId = useActiveBranchId();
+  const {
+    currency,
+    setCurrency,
+    currencyValid,
+    organization,
+  } = useOrganizationCurrencySelection(orgId);
   const [controlStatus, setControlStatus] = useState<"" | "AVAILABLE" | "HELD">(
     "",
   );
@@ -66,8 +73,9 @@ export default function PaymentObligationsPage() {
     status: status || null,
     controlStatus: controlStatus || null,
     branchId,
-    currency: "NGN",
+    currency,
     limit: 100,
+    enabled: currencyValid,
   });
 
   if (!orgId) {
@@ -99,6 +107,13 @@ export default function PaymentObligationsPage() {
 
       <Card>
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
+          <Input
+            aria-label="Obligation currency"
+            value={currency}
+            maxLength={3}
+            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+            className="w-24 uppercase"
+          />
           <select
             aria-label="Obligation lifecycle status"
             className={selectClassName}
@@ -129,7 +144,7 @@ export default function PaymentObligationsPage() {
         </CardContent>
       </Card>
 
-      {obligations.isLoading ? (
+      {organization.isLoading || !currencyValid || obligations.isLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
