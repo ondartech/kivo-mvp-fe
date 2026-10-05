@@ -752,7 +752,7 @@ function DraftRunSettings({
               <select
                 id="draft-run-account"
                 className={selectClassName}
-                value={fundingAccountId}
+                value={fundingAccountId ?? ""}
                 onChange={(event) => setFundingAccountId(event.target.value)}
               >
                 {eligibleAccounts.map((account) => (
