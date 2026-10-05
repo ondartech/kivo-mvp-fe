@@ -283,7 +283,7 @@ export function PaymentRunWorkspace({
               Run total
             </div>
             <div className="mt-2 text-2xl font-semibold tabular-nums">
-              {formatMoney(run.total_amount, run.currency)}
+              {formatMoney(run.total_settlement_amount, run.settlement_currency)}
             </div>
           </CardContent>
         </Card>
@@ -711,7 +711,9 @@ function DraftRunSettings({
 
   const eligibleAccounts = (bankAccounts.data ?? []).filter(
     (account) =>
-      account.status === "ACTIVE" && account.currency === run.currency,
+      account.status === "ACTIVE" &&
+      account.currency === run.settlement_currency &&
+      account.holder_legal_entity_id === run.payer_legal_entity_id,
   );
 
   const save = async () => {
@@ -750,7 +752,7 @@ function DraftRunSettings({
               <select
                 id="draft-run-account"
                 className={selectClassName}
-                value={fundingAccountId}
+                value={fundingAccountId ?? ""}
                 onChange={(event) => setFundingAccountId(event.target.value)}
               >
                 {eligibleAccounts.map((account) => (
@@ -833,7 +835,7 @@ function PaymentRunLine({
         bank_name: bankName.trim(),
         account_number: accountNumber.trim(),
         account_name: accountName.trim(),
-        currency: item.currency,
+        currency: item.settlement_currency,
       });
       setAccountNumber("");
       setShowDestination(false);
@@ -869,7 +871,17 @@ function PaymentRunLine({
             Obligation {shortPaymentId(item.payment_obligation_id)}
           </div>
           <div className="mt-2 text-lg font-semibold tabular-nums">
-            {formatMoney(item.allocated_amount, item.currency)}
+            {formatMoney(item.obligation_amount, item.obligation_currency)}
+            {item.obligation_currency !== item.settlement_currency ? (
+              <div className="mt-1 text-xs font-medium text-muted-foreground">
+                Settlement {formatMoney(item.settlement_amount, item.settlement_currency)} · FX evidence{" "}
+                {shortPaymentId(item.settlement_valuation_snapshot_id ?? "")}
+              </div>
+            ) : (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Same-currency settlement
+              </div>
+            )}
           </div>
         </div>
 
@@ -1386,7 +1398,12 @@ function InstructionPanel({
         </div>
         <div className="text-right">
           <div className="text-sm font-medium tabular-nums">
-            {formatMoney(instruction.amount, instruction.currency)}
+            {formatMoney(instruction.settlement_amount, instruction.settlement_currency)}
+            {instruction.obligation_currency !== instruction.settlement_currency ? (
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Obligation {formatMoney(instruction.obligation_amount, instruction.obligation_currency)}
+              </div>
+            ) : null}
           </div>
           <Badge variant={paymentInstructionStatusVariant(instruction.status)}>
             {humanizePaymentValue(instruction.status)}

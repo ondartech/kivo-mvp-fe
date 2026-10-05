@@ -43,10 +43,13 @@ export function resolveDashboardReadScope(
 
 export function buildDashboardParams(input: {
   branchId?: string | null;
-  currency?: string;
+  currency: string;
 }): URLSearchParams {
+  if (!/^[A-Z]{3}$/.test(input.currency)) {
+    throw new Error("Dashboard reporting requires an explicit ISO currency.");
+  }
   const params = new URLSearchParams();
-  params.set("currency", input.currency ?? "NGN");
+  params.set("currency", input.currency);
   if (input.branchId) params.set("branch_id", input.branchId);
   return params;
 }

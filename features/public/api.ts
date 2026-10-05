@@ -1,12 +1,14 @@
 import { fetchWithAuth } from "@/lib/api-client";
 import {
   publicAcceptanceSchema,
+  publicInvoiceSchema,
   publicQuoteSchema,
   type PublicAcceptance,
+  type PublicInvoice,
   type PublicQuote,
 } from "@/features/public/schema";
 
-export type { PublicAcceptance, PublicQuote } from "@/features/public/schema";
+export type { PublicAcceptance, PublicInvoice, PublicQuote } from "@/features/public/schema";
 
 type ErrorEnvelope = {
   error?: {
@@ -26,6 +28,16 @@ async function parseError(response: Response): Promise<Error> {
   const message = body?.error?.message ?? "Unable to load this public link.";
   const requestId = body?.error?.request_id;
   return new Error(requestId ? `${message} (Request ${requestId})` : message);
+}
+
+
+export async function getPublicInvoice(token: string): Promise<PublicInvoice> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicInvoiceSchema.parse(await response.json());
 }
 
 export async function getPublicQuote(token: string): Promise<PublicQuote> {

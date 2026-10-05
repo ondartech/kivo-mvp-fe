@@ -166,7 +166,7 @@ export default function PaymentRunsPage() {
                 <TableHead>Run</TableHead>
                 <TableHead>Execution date</TableHead>
                 <TableHead>Lines</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Settlement total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Archive</TableHead>
               </TableRow>
@@ -192,7 +192,7 @@ export default function PaymentRunsPage() {
                   </TableCell>
                   <TableCell>{run.item_count}</TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
-                    {formatMoney(run.total_amount, run.currency)}
+                    {formatMoney(run.total_settlement_amount, run.settlement_currency)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={paymentRunStatusVariant(run.status)}>

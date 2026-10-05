@@ -20,6 +20,7 @@ const ids = {
   source: "66666666-6666-4666-8666-666666666666",
   sourceEvent: "77777777-7777-4777-8777-777777777777",
   ruleVersion: "88888888-8888-4888-8888-888888888888",
+  legalEntity: "12121212-1212-4121-8121-121212121212",
 };
 
 function systemAccount() {
@@ -68,6 +69,8 @@ describe("Finance Explorer contracts", () => {
   it("parses account activity including authoritative running balance and source", () => {
     const parsed = accountActivitySchema.parse({
       organization_id: ids.org,
+      report_scope_type: "ORGANIZATION",
+      legal_entity_id: null,
       account_id: ids.account,
       account_code: "1100",
       account_name: "Accounts Receivable",
@@ -76,6 +79,7 @@ describe("Finance Explorer contracts", () => {
       normal_balance: "DEBIT",
       account_status: "ACTIVE",
       base_currency: "NGN",
+      presentation_currency: "NGN",
       from_date: "2026-09-01",
       to_date: "2026-09-21",
       branch_id: null,
@@ -86,6 +90,33 @@ describe("Finance Explorer contracts", () => {
       activity_credit: "0.000000",
       closing_debit: "1250000.000000",
       closing_credit: "0.000000",
+      presentation_opening_debit: "0.000000",
+      presentation_opening_credit: "0.000000",
+      presentation_activity_debit: "1250000.000000",
+      presentation_activity_credit: "0.000000",
+      presentation_closing_debit: "1250000.000000",
+      presentation_closing_credit: "0.000000",
+      translation_context: {
+        id: null,
+        report_type: "ACCOUNT_ACTIVITY",
+        report_classification: "FUNCTIONAL_BOOKS",
+        presentation_currency: "NGN",
+        translation_basis: "CLOSING",
+        translated: false,
+        from_date: "2026-09-01",
+        to_date: "2026-09-21",
+        source_report_hash: "source-report",
+        rate_set_hash: null,
+        context_hash: null,
+        scope_payload: {},
+        rate_snapshot_ids: [],
+        legal_entity_ids: [ids.legalEntity],
+        functional_currencies: ["NGN"],
+        policy_versions: [],
+        rate_evidence: [],
+        created_by_user_id: null,
+        created_at: null,
+      },
       data: [{
         line_id: ids.line,
         accounting_date: "2026-09-21",
@@ -102,6 +133,13 @@ describe("Finance Explorer contracts", () => {
         running_credit: "0.000000",
         running_balance: "1250000.000000",
         running_balance_side: "DEBIT",
+        presentation_debit: "1250000.000000",
+        presentation_credit: "0.000000",
+        presentation_running_debit: "1250000.000000",
+        presentation_running_credit: "0.000000",
+        presentation_running_balance: "1250000.000000",
+        presentation_running_balance_side: "DEBIT",
+        legal_entity_id: ids.legalEntity,
         branch_id: null,
         project_id: null,
         customer_id: null,
@@ -201,6 +239,86 @@ describe("Finance Explorer contracts", () => {
     });
     expect(parsed.accounting_date).toBe("2026-09-21");
     expect(parsed.created_at).not.toBe(parsed.posted_at);
+  });
+
+  it("preserves transaction-currency amounts and FX rate on cross-currency journals", () => {
+    const parsed = journalEntrySchema.parse({
+      id: ids.journal,
+      organization_id: ids.org,
+      entry_number: "JRN-FX-0001",
+      entry_type: "SYSTEM",
+      status: "POSTED",
+      accounting_date: "2026-09-21",
+      occurred_at: "2026-09-21T11:59:59+00:00",
+      created_at: "2026-09-21T12:00:01+00:00",
+      posted_at: "2026-09-21T12:00:03+00:00",
+      source_domain: "BILLING",
+      source_type: "INVOICE",
+      source_id: ids.source,
+      source_event_id: ids.sourceEvent,
+      financial_event_id: ids.event,
+      posting_profile_key: "SALE",
+      posting_rule_key: "sale.invoice",
+      posting_rule_version: 1,
+      posting_rule_version_id: ids.ruleVersion,
+      transaction_currency: "USD",
+      base_currency: "NGN",
+      fx_rate: "1600.000000",
+      total_debit_base: "1600000.000000",
+      total_credit_base: "1600000.000000",
+      reversal_of_entry_id: null,
+      reversed_by_entry_id: null,
+      memo: null,
+      reason: null,
+      created_by_principal: "system:finance",
+      correlation_id: "corr-fx",
+      causation_id: null,
+      lines: [{
+        id: ids.line,
+        organization_id: ids.org,
+        journal_entry_id: ids.journal,
+        line_number: 1,
+        account_id: ids.account,
+        description: "USD invoice receivable",
+        debit_transaction: "1000.000000",
+        credit_transaction: "0.000000",
+        debit_base: "1600000.000000",
+        credit_base: "0.000000",
+        branch_id: null,
+        project_id: null,
+        customer_id: null,
+        vendor_id: null,
+        order_id: null,
+        commercial_item_id: null,
+        inventory_location_id: null,
+        dimensions: {},
+      }, {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        organization_id: ids.org,
+        journal_entry_id: ids.journal,
+        line_number: 2,
+        account_id: ids.offsetAccount,
+        description: "Revenue",
+        debit_transaction: "0.000000",
+        credit_transaction: "1000.000000",
+        debit_base: "0.000000",
+        credit_base: "1600000.000000",
+        branch_id: null,
+        project_id: null,
+        customer_id: null,
+        vendor_id: null,
+        order_id: null,
+        commercial_item_id: null,
+        inventory_location_id: null,
+        dimensions: {},
+      }],
+    });
+
+    expect(parsed.transaction_currency).toBe("USD");
+    expect(parsed.base_currency).toBe("NGN");
+    expect(parsed.fx_rate).toBe("1600.000000");
+    expect(parsed.lines[0].debit_transaction).toBe("1000.000000");
+    expect(parsed.lines[0].debit_base).toBe("1600000.000000");
   });
 
   it("parses the journal-to-source trace chain", () => {

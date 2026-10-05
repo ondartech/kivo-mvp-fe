@@ -6,6 +6,19 @@ import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/experience/ask-runtime";
 
+export type Organization = {
+  id: string;
+  name: string;
+  slug: string;
+  handle: string | null;
+  status: string;
+  default_currency: string;
+  timezone: string;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+};
+
 export type OperatingBranch = {
   id: string;
   organization_id: string;
@@ -68,6 +81,20 @@ async function handleRes<T>(res: Response): Promise<T> {
     );
   }
   return res.json() as Promise<T>;
+}
+
+
+export function useOrganization(orgId: string) {
+  return useQuery<Organization>({
+    queryKey: ["organization", orgId],
+    queryFn: async () => {
+      const res = await fetchWithAuth(baseUrl(orgId), { method: "GET" });
+      return handleRes<Organization>(res);
+    },
+    enabled: isUuid(orgId),
+    staleTime: 60_000,
+    retry: 1,
+  });
 }
 
 export function useOperatingBranches(

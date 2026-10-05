@@ -93,7 +93,7 @@ export default function MarketingPage() {
               <div className="rounded-lg border bg-background p-3">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Outstanding</div>
                 <div className="mt-1">
-                  <MoneyAmount amount="12400000" emphasis="primary" />
+                  <MoneyAmount amount="12400000" currency="NGN" emphasis="primary" />
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">42 invoices</div>
               </div>
@@ -107,7 +107,7 @@ export default function MarketingPage() {
               <div className="rounded-lg border bg-background p-3">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Collected · May</div>
                 <div className="mt-1">
-                  <MoneyAmount amount="7800000" emphasis="primary" />
+                  <MoneyAmount amount="7800000" currency="NGN" emphasis="primary" />
                 </div>
               </div>
               <div className="rounded-lg border bg-background p-3">

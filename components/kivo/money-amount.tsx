@@ -1,13 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { formatMoney } from "@/lib/money";
+import { formatCompactMoney, formatMoney } from "@/lib/money";
 
 type Emphasis = "primary" | "secondary" | "table" | "compact" | "display" | "document";
 
 interface Props {
   amount: string; // Decimal string — authoritative, never float
-  currency?: string;
+  currency: string;
   emphasis?: Emphasis;
   className?: string;
   compactThreshold?: number; // not used for authority, only display shortening
@@ -22,7 +22,7 @@ const styles: Record<Emphasis, string> = {
   document: "text-base font-semibold tabular-nums",
 };
 
-export function MoneyAmount({ amount, currency = "NGN", emphasis = "primary", className }: Props) {
+export function MoneyAmount({ amount, currency, emphasis = "primary", className }: Props) {
   // Display-only: delegate to lib/money.ts (en-NG, never calc)
   const formatted = formatMoney(amount, currency);
 
@@ -31,14 +31,29 @@ export function MoneyAmount({ amount, currency = "NGN", emphasis = "primary", cl
   return <span className={cn(styles[emphasis], className)}>{formatted}</span>;
 }
 
-export function CompactMoney({ amount, currency = "NGN", className }: { amount: string; currency?: string; className?: string }) {
-  // ₦2.4m style — display shortening, not precision change
+export function CompactMoney({
+  amount,
+  currency,
+  className,
+}: {
+  amount: string;
+  currency: string;
+  className?: string;
+}) {
   const num = Number(amount);
-  if (Number.isNaN(num)) return <MoneyAmount amount={amount} currency={currency} emphasis="compact" className={className} />;
-  const abs = Math.abs(num);
-  let display = "";
-  if (abs >= 1_000_000) display = `₦${(num / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`;
-  else if (abs >= 1_000) display = `₦${(num / 1000).toFixed(0)}k`;
-  else display = formatMoney(amount, currency);
+  if (Number.isNaN(num)) {
+    return (
+      <MoneyAmount
+        amount={amount}
+        currency={currency}
+        emphasis="compact"
+        className={className}
+      />
+    );
+  }
+  const display =
+    Math.abs(num) >= 1_000
+      ? formatCompactMoney(amount, currency)
+      : formatMoney(amount, currency);
   return <span className={cn("tabular-nums font-medium", className)}>{display}</span>;
 }

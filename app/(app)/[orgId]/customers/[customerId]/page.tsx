@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/kivo/empty-state";
 import { MoneyAmount } from "@/components/kivo/money-amount";
 import { formatMoney } from "@/lib/money";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 import { useCustomer, useCustomerBalance, useCustomerHistory, useArchiveCustomer, useRestoreCustomer, useContacts } from "@/features/customers/api";
 import { toast } from "sonner";
 
@@ -22,7 +23,11 @@ export default function OrgCustomerDetailPage() {
   const [tab, setTab] = useState<"overview" | "contacts" | "history">("overview");
 
   const { data: customer, isLoading, isError, error, refetch } = useCustomer(orgId, customerId);
-  const { data: balance } = useCustomerBalance(orgId, customerId);
+  const { currency, currencyValid } = useOrganizationCurrencySelection(orgId);
+  const { data: balance } = useCustomerBalance(orgId, customerId, {
+    currency,
+    enabled: currencyValid,
+  });
   const { data: historyData, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: historyLoading } = useCustomerHistory(orgId, customerId);
   const { data: contactsData } = useContacts(orgId, customerId);
   const archiveMut = useArchiveCustomer(orgId);
