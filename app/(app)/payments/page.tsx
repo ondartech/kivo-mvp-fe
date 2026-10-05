@@ -78,7 +78,7 @@ export default function PaymentsPage() {
   });
   const runs = usePaymentRuns(orgId, {
     archiveState: "active",
-    currency: currencyValid ? currency : null,
+    settlementCurrency: currencyValid ? currency : null,
     limit: 8,
   });
   const executions = usePaymentExecutionQueue(orgId, {
@@ -325,7 +325,10 @@ export default function PaymentsPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-medium tabular-nums">
-                        {formatMoney(run.total_amount, run.currency)}
+                        {formatMoney(
+                          run.total_settlement_amount,
+                          run.settlement_currency,
+                        )}
                       </div>
                       <Badge variant={paymentRunStatusVariant(run.status)}>
                         {humanizePaymentValue(run.status)}
