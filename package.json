@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "gen:types": "openapi-typescript generated/openapi.json -o generated/openapi.ts"
+    "gen:types": "openapi-typescript generated/openapi.json -o generated/openapi.ts",
+    "check:fx": "node scripts/check-fx-conformance.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.6",

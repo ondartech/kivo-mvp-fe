@@ -31,6 +31,7 @@ import {
 import { useTaxCodes } from "@/features/tax/api";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 import { formatMoney } from "@/lib/money";
 
 type DraftLine = QuoteLineInput & { key: number };
@@ -91,7 +92,6 @@ export default function NewQuotePage() {
   const [customerId, setCustomerId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [archetype, setArchetype] = useState<QuoteArchetype | "">("");
-  const [currency, setCurrency] = useState("NGN");
   const [validUntil, setValidUntil] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
@@ -109,6 +109,9 @@ export default function NewQuotePage() {
   });
   const preview = useCalculateQuotePreview(orgId);
   const createQuote = useCreateQuote(orgId);
+
+  const { currency, setCurrency } =
+    useOrganizationCurrencySelection(orgId);
 
   useEffect(() => {
     if (!branchAccess.data) return;
@@ -441,6 +444,7 @@ export default function NewQuotePage() {
                   <Input
                     id="quote-currency"
                     value={currency}
+                    placeholder="USD"
                     onChange={(event) => {
                       setCurrency(event.target.value.toUpperCase());
                       preview.reset();
