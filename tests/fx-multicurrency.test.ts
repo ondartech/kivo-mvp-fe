@@ -35,6 +35,16 @@ describe("FX-013G multi-currency presentation conformance", () => {
     );
   });
 
+  it("preserves decimal-string precision beyond JavaScript safe integers", () => {
+    expect(formatMoney("999999999999999999.99", "USD")).toBe(
+      "$999,999,999,999,999,999.99",
+    );
+  });
+
+  it("rejects non-canonical money display input", () => {
+    expect(() => formatMoney("1,000.00", "USD")).toThrow(/canonical decimal string/);
+  });
+
   it("does not hard-code the naira symbol in compact formatting", () => {
     const usd = formatCompactMoney("2500000", "USD");
     const jpy = formatCompactMoney("2500000", "JPY");
@@ -64,6 +74,11 @@ describe("FX-013G multi-currency presentation conformance", () => {
       presentationCurrency: "USD",
     });
     expect(translated.get("presentation_currency")).toBe("USD");
+    expect(() =>
+      buildFinanceActivityParams({
+        presentationCurrency: "US",
+      }),
+    ).toThrow(/three-letter ISO code/);
   });
 
   it("preserves an explicit Dashboard presentation currency", () => {
@@ -73,6 +88,9 @@ describe("FX-013G multi-currency presentation conformance", () => {
     });
     expect(params.get("currency")).toBe("EUR");
     expect(params.has("branch_id")).toBe(false);
+    expect(() =>
+      buildDashboardParams({ branchId: null, currency: "" }),
+    ).toThrow(/explicit ISO currency/);
   });
 
   it("preserves explicit Receivables reporting currency and branch scope", () => {
