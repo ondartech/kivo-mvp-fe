@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MoneyAmount } from "@/components/kivo/money-amount";
@@ -16,7 +16,7 @@ import {
   type InvoiceCreateInput,
 } from "@/features/invoices/api";
 import { resolveInvoiceCreateBranchId } from "@/features/invoices/branching";
-import { useOperatingBranches, useOrganization } from "@/features/organization/api";
+import { useOperatingBranches } from "@/features/organization/api";
 import { useTaxCodes } from "@/features/tax/api";
 import {
   documentAttachableTaxCodes,
@@ -25,6 +25,7 @@ import {
 } from "@/features/tax/document";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
 import { useActiveOrganizationId } from "@/hooks/use-active-organization";
+import { useOrganizationCurrencySelection } from "@/hooks/use-organization-currency";
 
 function localDate(offsetDays = 0) {
   const value = new Date();
@@ -40,7 +41,6 @@ export default function NewInvoicePage() {
   const orgId = useActiveOrganizationId() ?? "";
   const activeBranchId = useActiveBranchId();
   const branchAccess = useOperatingBranches(orgId);
-  const organization = useOrganization(orgId);
   const customers = useCustomers(orgId, { status: "ACTIVE", limit: 100 });
   const catalogItems = useCatalogItems(orgId, { direction: "SELL" });
   const taxCodes = useTaxCodes(orgId);
@@ -56,24 +56,14 @@ export default function NewInvoicePage() {
   const [commercialItemId, setCommercialItemId] = useState("");
   const [taxCodeId, setTaxCodeId] = useState("");
   const [description, setDescription] = useState("");
-  const [currency, setCurrency] = useState("");
   const [amount, setAmount] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unitPrice, setUnitPrice] = useState("");
   const [issueDate, setIssueDate] = useState(localDate());
   const [dueDate, setDueDate] = useState(localDate(14));
 
-  useEffect(() => {
-    setCurrency("");
-  }, [orgId]);
-
-  useEffect(() => {
-    if (!currency && organization.data?.default_currency) {
-      setCurrency(organization.data.default_currency);
-    }
-  }, [currency, organization.data?.default_currency]);
-
-  const currencyValid = /^[A-Z]{3}$/.test(currency);
+  const { currency, setCurrency, currencyValid } =
+    useOrganizationCurrencySelection(orgId);
 
   const createBranchId = resolveInvoiceCreateBranchId(
     branchAccess.data,
