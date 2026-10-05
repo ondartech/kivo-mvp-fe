@@ -6,6 +6,16 @@ const root = resolve(process.cwd());
 const sourceRoots = ["app", "components", "features", "hooks", "lib"];
 const extensions = new Set([".ts", ".tsx", ".js", ".jsx"]);
 
+const requiredOpenApiPaths = [
+  "/api/v1/organizations/{organization_id}/dashboard",
+  "/api/v1/organizations/{organization_id}/receivables/summary",
+  "/api/v1/organizations/{organization_id}/receivables/aging",
+  "/api/v1/organizations/{organization_id}/customers/{customer_id}/balance",
+  "/api/v1/organizations/{organization_id}/payment-operations/summary",
+  "/api/v1/organizations/{organization_id}/finance/profile",
+];
+
+
 const explicitNgnExampleAllowlist = new Set([
   "app/page.tsx",
   "app/(app)/settings/subscription/page.tsx",
@@ -55,6 +65,35 @@ if (/currency\s*=\s*["']NGN["']/.test(moneyAmountSource)) {
   violations.push(
     "components/kivo/money-amount.tsx: generic money components must not default to NGN",
   );
+}
+
+const openApiPath = join(root, "generated", "openapi.json");
+const openApi = JSON.parse(readFileSync(openApiPath, "utf8"));
+
+function walkOpenApi(value, path = "root") {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => walkOpenApi(item, `${path}[${index}]`));
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  for (const [key, nested] of Object.entries(value)) {
+    const nextPath = `${path}.${key}`;
+    if (key === "default" && nested === "NGN") {
+      violations.push(
+        `generated/openapi.json: implicit NGN default at ${nextPath}`,
+      );
+    }
+    walkOpenApi(nested, nextPath);
+  }
+}
+
+walkOpenApi(openApi);
+for (const requiredPath of requiredOpenApiPaths) {
+  if (!openApi.paths?.[requiredPath]) {
+    violations.push(
+      `generated/openapi.json: missing required multi-currency API path ${requiredPath}`,
+    );
+  }
 }
 
 for (const sourceRoot of sourceRoots) {
