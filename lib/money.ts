@@ -65,6 +65,9 @@ export function formatMoney(
   });
   const fractionDigits =
     currencyFormatter.resolvedOptions().maximumFractionDigits;
+  if (fractionDigits === undefined) {
+    throw new Error("Money display could not resolve currency minor units.");
+  }
 
   const rounded = roundForCurrency(amount, fractionDigits);
   const signedInteger = rounded.negative ? -rounded.integer : rounded.integer;
