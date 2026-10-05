@@ -51,6 +51,9 @@ export function buildFinanceActivityParams(input: {
   params.set("limit", String(input.limit ?? 50));
   if (input.branchId) params.set("branch_id", input.branchId);
   if (input.presentationCurrency) {
+    if (!/^[A-Z]{3}$/.test(input.presentationCurrency)) {
+      throw new Error("Finance presentation currency must be a three-letter ISO code.");
+    }
     params.set("presentation_currency", input.presentationCurrency);
   }
   if (input.cursor) params.set("cursor", input.cursor);
