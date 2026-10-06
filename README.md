@@ -1,7 +1,7 @@
 # Ondar web application
 
 This repository contains the Next.js frontend for Ondar. The historical repository name
-and some internal code identifiers still use `kivo`; the public product identity is Ondar.
+and some legacy infrastructure or historical identifiers still use `kivo`; the canonical product identity is Ondar.
 
 ## Runtime contract
 
