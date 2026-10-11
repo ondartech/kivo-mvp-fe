@@ -11,6 +11,7 @@ import { MicrosoftButton } from "@/components/auth/MicrosoftButton";
 import { beginOAuth, type OAuthProvider } from "@/features/auth/api";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
+import { writeExperienceScope } from "@/lib/experience/ask-runtime";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,7 +54,10 @@ export default function LoginPage() {
       if (body.access_token) localStorage.setItem("token", body.access_token);
       if (body.refresh_token) localStorage.setItem("refresh_token", body.refresh_token);
       const orgId = body?.memberships?.[0]?.organization_id;
-      if (orgId) router.push(`/${orgId}/dashboard`);
+      if (orgId) {
+        writeExperienceScope({ organizationId: orgId, branchId: null });
+        router.push("/app/dashboard");
+      }
       else if (next) router.push(next);
       else router.push("/onboarding");
     } catch (e: any) {

@@ -1,3 +1,4 @@
+import { isPublicBranchId } from "@/lib/public-resource-id";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
@@ -124,7 +125,7 @@ export function readExperienceScope(): ExperienceScope {
     localStorage.getItem("branchId") ?? localStorage.getItem("branch_id");
   return {
     organizationId: isUuid(organizationId) ? organizationId : null,
-    branchId: isUuid(branchId) ? branchId : null,
+    branchId: (isUuid(branchId) || isPublicBranchId(branchId)) ? branchId : null,
   };
 }
 
@@ -139,7 +140,7 @@ export function writeExperienceScope(scope: ExperienceScope): ExperienceScope {
     ? scope.organizationId
     : null;
   const branchId =
-    organizationId && isUuid(scope.branchId) ? scope.branchId : null;
+    organizationId && (isUuid(scope.branchId) || isPublicBranchId(scope.branchId)) ? scope.branchId : null;
 
   if (organizationId) {
     localStorage.setItem("orgId", organizationId);

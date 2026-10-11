@@ -1,5 +1,7 @@
 "use client";
 
+import { writeExperienceScope } from "@/lib/experience/ask-runtime";
+
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -65,7 +67,10 @@ export default function OAuthCallbackPage() {
         clearOAuthTransaction(transaction);
 
         const orgId = data.memberships?.[0]?.organization_id;
-        if (orgId) router.replace("/" + orgId + "/dashboard");
+        if (orgId) {
+          writeExperienceScope({ organizationId: orgId, branchId: null });
+          router.replace("/app/dashboard");
+        }
         else router.replace("/onboarding");
       } catch (e: unknown) {
         clearOAuthTransaction(transaction);
