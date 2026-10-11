@@ -61,6 +61,7 @@ export async function getPublicAcceptance(token: string): Promise<PublicAcceptan
 export async function acceptPublicAcceptance(
   token: string,
   customerName?: string,
+  review?: { revision_hash: string; manifest_hash: string },
 ): Promise<PublicAcceptance> {
   const response = await fetchWithAuth(
     `/api/public/acceptances/${encodeURIComponent(token)}/accept`,
@@ -69,6 +70,12 @@ export async function acceptPublicAcceptance(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customer_name: customerName?.trim() || null,
+        ...(review
+          ? {
+              review_revision_hash: review.revision_hash,
+              review_manifest_hash: review.manifest_hash,
+            }
+          : {}),
       }),
     },
   );
