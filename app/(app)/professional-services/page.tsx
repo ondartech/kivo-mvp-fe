@@ -18,6 +18,7 @@ import {
   readableWorkspaceProblem, relevantProfessionalPattern, terminologyLabel,
 } from "@/features/professional-services/workspace";
 import { useOperatingBranches } from "@/features/organization/api";
+import { useProfessionalOrganizationIdentity } from "@/features/professional-services/identity";
 import { useProjects } from "@/features/projects/api";
 import { resolveProjectReadScope } from "@/features/projects/branching";
 import { useActiveBranchId } from "@/hooks/use-active-branch";
@@ -52,7 +53,9 @@ function InstallationStatusRow({label,status,detail}: {label: string; status: In
 }
 
 export default function ProfessionalServicesPage() {
-  const orgId = useActiveOrganizationId() ?? "";
+  const membershipOrgId = useActiveOrganizationId() ?? "";
+  const identity = useProfessionalOrganizationIdentity(membershipOrgId);
+  const orgId = identity.publicOrganizationId ?? "";
   const branchId = useActiveBranchId();
   const [selectedPattern, setSelectedPattern] = useState<EngagementPattern | null>(null);
   const effective = useProfessionalEffectiveWorkspace(orgId, selectedPattern);
@@ -81,10 +84,23 @@ export default function ProfessionalServicesPage() {
     workspace.catalogue.pack_recommendation_state === "AVAILABLE_FOR_PLANNING"
   );
 
-  if (!orgId) return (
+  if (!membershipOrgId) return (
     <EmptyState
       title="Select an organization"
       description="Professional Services needs an authenticated organization context. Choose an organization in Ondar first."
+    />
+  );
+
+  if (identity.isLoading) return (
+    <main className="space-y-5" aria-busy="true" aria-label="Resolving organization identity">
+      <Skeleton className="h-24 w-full" /><Skeleton className="h-40 w-full" />
+    </main>
+  );
+  if (identity.isError || !orgId) return (
+    <ErrorState
+      title="Cannot resolve your organization identity"
+      description="This signed-in membership has no verified public organization ID, or the identity handoff API is unavailable. No workspace data has been requested."
+      retry={{label: "Retry identity check", onClick: () => void identity.refetch()}}
     />
   );
 

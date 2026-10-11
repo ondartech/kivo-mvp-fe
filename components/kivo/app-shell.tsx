@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useOpenAttentionCount } from "@/features/foundation/api";
 import { useOperatingBranches } from "@/features/organization/api";
 import { useProfessionalEffectiveWorkspace } from "@/features/professional-services/api";
+import { useProfessionalOrganizationIdentity } from "@/features/professional-services/identity";
 import {
   EXPERIENCE_SCOPE_EVENT,
   isUuid,
@@ -150,7 +151,9 @@ export function AppShell({
     };
   }, []);
 
-  const professional = useProfessionalEffectiveWorkspace(activeOrgId ?? "");
+  const orgIdentity = useProfessionalOrganizationIdentity(activeOrgId ?? "");
+  const publicOrgId = orgIdentity.publicOrganizationId ?? "";
+  const professional = useProfessionalEffectiveWorkspace(publicOrgId);
   const professionalAvailable = Boolean(
     professional.data &&
     (
@@ -164,7 +167,7 @@ export function AppShell({
     ? [...domainNav, { label: "Services", href: "/app/professional-services" }]
     : domainNav;
 
-  const branchAccess = useOperatingBranches(activeOrgId ?? "");
+  const branchAccess = useOperatingBranches(publicOrgId || activeOrgId || "");
   const branchOptions = branchAccess.data?.branches ?? [];
   const organizationWide = branchAccess.data?.organization_wide ?? false;
 

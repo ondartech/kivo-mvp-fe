@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
-import { isUuid } from "@/lib/experience/ask-runtime";
+import { isPublicOrganizationId } from "@/lib/public-resource-id";
 
 export type EngagementPattern = "RETAINER" | "PROJECT" | "TIME_BASED";
 export type ProfessionalAction = {
@@ -149,7 +149,7 @@ export function useProfessionalEffectiveWorkspace(
         await parseResponse<ProfessionalEffectiveWorkspace>(response), orgId,
       );
     },
-    enabled: isUuid(orgId),
+    enabled: isPublicOrganizationId(orgId),
     retry: false,
     staleTime: 20_000,
   });
@@ -161,7 +161,7 @@ export function useProfessionalTerminology(orgId: string, enabled = true) {
     queryFn: async () => parseResponse<ProfessionalTerminology>(
       await fetchWithAuth(`${baseUrl(orgId)}/industry-ux/terminology`, { method: "GET" }),
     ),
-    enabled: enabled && isUuid(orgId),
+    enabled: enabled && isPublicOrganizationId(orgId),
     retry: false,
     staleTime: 60_000,
   });

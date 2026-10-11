@@ -9,8 +9,8 @@ import {
   relevantProfessionalPattern, safeProfessionalActionHref, terminologyLabel,
 } from "@/features/professional-services/workspace";
 
-const orgId = "11111111-1111-4111-8111-111111111111";
-const otherOrgId = "22222222-2222-4222-8222-222222222222";
+const orgId = "org_" + "0".repeat(20);
+const otherOrgId = "org_" + "A".repeat(20);
 
 function action(overrides: Partial<ProfessionalAction> = {}): ProfessionalAction {
   return {
