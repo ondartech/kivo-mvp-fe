@@ -5,6 +5,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/experience/ask-runtime";
+import { isOrganizationRequestId } from "@/lib/public-resource-id";
+
+export type Organization = {
+  id: string;
+  name: string;
+  slug: string;
+  handle: string | null;
+  status: string;
+  default_currency: string;
+  timezone: string;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+};
 
 export type Organization = {
   id: string;
@@ -116,7 +130,7 @@ export function useOperatingBranches(
       );
       return handleRes<OperatingBranchAccess>(res);
     },
-    enabled: isUuid(orgId),
+    enabled: isOrganizationRequestId(orgId),
     staleTime: 60_000,
     retry: 1,
   });

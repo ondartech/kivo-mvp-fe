@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/experience/ask-runtime";
+import { isOrganizationRequestId } from "@/lib/public-resource-id";
 import {
   buildProjectDashboardParams,
   buildProjectListParams,
@@ -232,7 +233,7 @@ export function useProjects(
       );
       return handleRes<ProjectList>(res);
     },
-    enabled: isUuid(orgId) && (opts.enabled ?? true),
+    enabled: isOrganizationRequestId(orgId) && (opts.enabled ?? true),
     placeholderData: (previous) => previous,
   });
 }
