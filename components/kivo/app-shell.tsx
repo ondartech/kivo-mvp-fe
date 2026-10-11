@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useOpenAttentionCount } from "@/features/foundation/api";
 import { useOperatingBranches } from "@/features/organization/api";
+import { useProfessionalEffectiveWorkspace } from "@/features/professional-services/api";
 import {
   EXPERIENCE_SCOPE_EVENT,
   isUuid,
@@ -149,6 +150,20 @@ export function AppShell({
     };
   }, []);
 
+  const professional = useProfessionalEffectiveWorkspace(activeOrgId ?? "");
+  const professionalAvailable = Boolean(
+    professional.data &&
+    (
+      professional.data.catalogue.pack_recommendation_state === "AVAILABLE_FOR_PLANNING" ||
+      ["professional_services", "project_services"].includes(
+        professional.data.catalogue.primary_industry_key ?? "",
+      )
+    ),
+  );
+  const visibleDomainNav = professionalAvailable
+    ? [...domainNav, { label: "Services", href: "/app/professional-services" }]
+    : domainNav;
+
   const branchAccess = useOperatingBranches(activeOrgId ?? "");
   const branchOptions = branchAccess.data?.branches ?? [];
   const organizationWide = branchAccess.data?.organization_wide ?? false;
@@ -223,7 +238,7 @@ export function AppShell({
             className="hidden min-w-0 flex-1 items-center gap-1 lg:flex"
             aria-label="Domain navigation"
           >
-            {domainNav.map((item) => {
+            {visibleDomainNav.map((item) => {
               const active = pathname?.startsWith(item.activePrefix ?? item.href);
               return (
                 <Link
@@ -635,7 +650,7 @@ export function AppShell({
         className="flex items-center gap-1 overflow-x-auto border-b bg-surface px-4 py-2 lg:hidden"
         aria-label="Domain navigation"
       >
-        {domainNav.map((item) => (
+        {visibleDomainNav.map((item) => (
           <Link
             key={item.href}
             href={item.href}
