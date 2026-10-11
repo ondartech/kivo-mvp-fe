@@ -20,19 +20,6 @@ export type Organization = {
   archived_at: string | null;
 };
 
-export type Organization = {
-  id: string;
-  name: string;
-  slug: string;
-  handle: string | null;
-  status: string;
-  default_currency: string;
-  timezone: string;
-  created_at: string;
-  updated_at: string;
-  archived_at: string | null;
-};
-
 export type OperatingBranch = {
   id: string;
   organization_id: string;
