@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   publicAcceptanceSchema,
+  publicEvidenceReviewSchema,
   publicQuoteSchema,
 } from "@/features/public/schema";
 
@@ -52,6 +53,31 @@ describe("public token schemas", () => {
     });
 
     expect(parsed.status).toBe("PENDING");
+  });
+
+  it("accepts only a revision-bound, non-storage-locator evidence manifest", () => {
+    const proof = publicEvidenceReviewSchema.parse({
+      revision_number: 2,
+      revision_hash: "a".repeat(64),
+      manifest_hash: "b".repeat(64),
+      artifacts: [{
+        ordinal: 1,
+        artifact_id: "2aa6e6e8-7ed5-42bc-a4f1-283de0bb0668",
+        content_hash: "c".repeat(64),
+        media_type: "application/pdf",
+        download_available: true,
+      }],
+      all_downloadable: true,
+      acknowledgement_is_not_proof_of_reading: true,
+    });
+    expect(proof.revision_number).toBe(2);
+    expect(proof.artifacts).toHaveLength(1);
+    expect(() => publicEvidenceReviewSchema.parse({
+      ...proof, artifacts: [{
+        ...proof.artifacts[0],
+        blob_ref: "evidence/tenant/private-document.pdf",
+      }],
+    })).toThrow();
   });
 
   it("rejects internal identifiers that are not part of the public contract", () => {
