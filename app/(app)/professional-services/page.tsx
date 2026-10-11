@@ -256,7 +256,9 @@ export default function ProfessionalServicesPage() {
                   {visibleEngagements.map(item => (
                     <li key={item.id} className="flex items-center justify-between gap-3 py-3">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">{item.name}</div>
+                        <Link href={`/app/projects/${encodeURIComponent(item.id)}`} className="block truncate rounded-sm text-sm font-medium hover:underline focus-visible:outline focus-visible:outline-2" aria-label={`Open ${item.name} project`}>
+                          {item.name}
+                        </Link>
                         <div className="mt-1 text-xs text-muted-foreground">{item.project_number}</div>
                       </div>
                       <Badge variant={item.status === "ACTIVE" ? "success" : item.status === "ON_HOLD" ? "warning" : "neutral"}>
