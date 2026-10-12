@@ -100,7 +100,7 @@ export type PlanningInbox = {
     review_due_at: string;
   }>;
   has_more: boolean;
-  next_cursor: string | null;
+  next_cursor: number | null;
 };
 
 export function planningWorkspaceBase(orgPublicId: string) {
@@ -120,7 +120,7 @@ async function response<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function usePlanningInbox(orgPublicId: string, cursor: string | null = null) {
+export function usePlanningInbox(orgPublicId: string, cursor = 0) {
   const base = planningWorkspaceBase(orgPublicId);
   return useQuery<PlanningInbox>({
     queryKey: ["dplan-workspace-inbox", orgPublicId, cursor],
