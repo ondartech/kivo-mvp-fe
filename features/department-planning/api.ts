@@ -100,6 +100,7 @@ export type PlanningInbox = {
     review_due_at: string;
   }>;
   has_more: boolean;
+  next_cursor: string | null;
 };
 
 export function planningWorkspaceBase(orgPublicId: string) {
@@ -119,13 +120,13 @@ async function response<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function usePlanningInbox(orgPublicId: string) {
+export function usePlanningInbox(orgPublicId: string, cursor: string | null = null) {
   const base = planningWorkspaceBase(orgPublicId);
   return useQuery<PlanningInbox>({
-    queryKey: ["dplan-workspace-inbox", orgPublicId],
+    queryKey: ["dplan-workspace-inbox", orgPublicId, cursor],
     enabled: Boolean(base),
     queryFn: async () => response<PlanningInbox>(
-      await fetchWithAuth(`${base}/workspace/inbox?limit=25`, {method: "GET", cache: "no-store"}),
+      await fetchWithAuth(`${base}/workspace/inbox?limit=25${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, {method: "GET", cache: "no-store"}),
     ),
     retry: false,
     staleTime: 0,
