@@ -1,8 +1,8 @@
-# AGENTS.md — `kivo-mvp-fe`
+# AGENTS.md — `ondar-web`
 
 ## 1. Purpose
 
-Operating contract for AI agents in `kivo-mvp-fe` — Next.js App Router consumer of `kivo-mvp-be` contract (`openapi.json`). No business logic in FE; never calculate `grand_total`. Preserve design-system + accessibility + mobile-first.
+Operating contract for AI agents in `ondar-web` — Next.js App Router consumer of `ondar` contract (`openapi.json`). No business logic in FE; never calculate `grand_total`. Preserve design-system + accessibility + mobile-first.
 
 ## 2. Instruction Hierarchy
 
@@ -10,8 +10,8 @@ Operating contract for AI agents in `kivo-mvp-fe` — Next.js App Router consume
 
 ## 3. Repository Scope
 
-**Name:** `kivo-mvp-fe`  
-**Purpose:** Next.js 15 `App Router` + TS Strict + Tailwind 3 + `shadcn/ui` + `RHF+Zod` + `TanStack Query` — consumes `kivo-mvp-be` `openapi.json` (`generated/openapi.ts`) via `lib/api-client.ts`. Routes under `app/(auth)`, `app/(app)/[orgId]`, `app/(public)/i/[token]`. No PG access.
+**Name:** `ondar-web`  
+**Purpose:** Next.js 15 `App Router` + TS Strict + Tailwind 3 + `shadcn/ui` + `RHF+Zod` + `TanStack Query` — consumes `ondar` `openapi.json` (`generated/openapi.ts`) via `lib/api-client.ts`. Routes under `app/(auth)`, `app/(app)/[orgId]`, `app/(public)/i/[token]`. No PG access.
 
 **Primary Technologies**
 
@@ -27,7 +27,7 @@ Operating contract for AI agents in `kivo-mvp-fe` — Next.js App Router consume
 **Structure**
 
 ```text
-kivo-mvp-fe/
+ondar-web/
 ├── app/
 │   ├── layout.tsx                # RootLayout + QueryProvider + Toaster
 │   ├── (auth)/login|signup|verify|forgot|reset
@@ -86,7 +86,7 @@ FE must preserve BE invariants visually: show `DRAFT` editable vs `ISSUED` immut
 
 ## 10. Authentication and Authorization
 
-`JWT RS256` `15m` + `7d refresh` from `kivo-mvp-be` (`supabase`), `httpOnly` BFF cookie via `app/(auth)`. `requireOrgMembership` → `GET /auth/me` memberships. RBAC `OWNER` MVP, `VIEWER` hidden `New` button (not disabled). `EntitlementGate` hides `New invoice` when `invoices.monthly` but BE still gates `403`.
+`JWT RS256` `15m` + `7d refresh` from `ondar` (`supabase`), `httpOnly` BFF cookie via `app/(auth)`. `requireOrgMembership` → `GET /auth/me` memberships. RBAC `OWNER` MVP, `VIEWER` hidden `New` button (not disabled). `EntitlementGate` hides `New invoice` when `invoices.monthly` but BE still gates `403`.
 
 ## 11. Data Access Rules
 
@@ -118,7 +118,7 @@ FE polls `GET /document` every 5s until `READY` after `POST /issue` (since `POST
 
 | Integration | Purpose | Failure Strategy |
 |---|---|---|
-| `kivo-mvp-be` (`NEXT_PUBLIC_API_URL`) | All data | `401` → redirect `/login`, `429` → `Retry-After` `Toaster` |
+| `ondar` (`NEXT_PUBLIC_API_URL`) | All data | `401` → redirect `/login`, `429` → `Retry-After` `Toaster` |
 
 No vendor SDK in domain; `lib/api-client.ts` isolates.
 
@@ -134,7 +134,7 @@ FE `console.error` + `Toaster` + `X-Request-Id` copy for support. Include `reque
 
 `vitest` unit (Zod schema), `playwright` e2e against staging BE (`signup→issue→public view→PDF`), `axe` criticals `0`, `openapi.json --check` contract.
 
-## 21-49. Same as `kivo-mvp-be` AGENTS adapted (Quality, Type Safety TS strict `noAny`, Frontend Rules shadcn variants `cva`, Accessibility WCAG 2.1 AA on `/invoices/new`, Performance `p95<500ms` public `ETag`, Security `grand_total` never typed, Audit read via `GET /audit-events`, Git conventional commits `feat(fe): ...`, Validation `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, DoD `axe` + `openapi.ts` synced).
+## 21-49. Same as `ondar` AGENTS adapted (Quality, Type Safety TS strict `noAny`, Frontend Rules shadcn variants `cva`, Accessibility WCAG 2.1 AA on `/invoices/new`, Performance `p95<500ms` public `ETag`, Security `grand_total` never typed, Audit read via `GET /audit-events`, Git conventional commits `feat(fe): ...`, Validation `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, DoD `axe` + `openapi.ts` synced).
 
 Repository-Specific Commands:
 ```bash
