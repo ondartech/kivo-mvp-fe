@@ -318,7 +318,7 @@ export default function DepartmentPlanningPage() {
           {inbox.data?.has_more && inbox.data.next_cursor != null ? (
             <Button size="sm" variant="secondary" onClick={() => {
               setPreviousCursors(items => [...items, pageCursor]);
-              setPageCursor(inbox.data!.next_cursor);
+              setPageCursor(inbox.data?.next_cursor ?? 0);
               setSelectedCampaignId("");
             }}>Next page of accessible campaigns</Button>
           ) : null}
