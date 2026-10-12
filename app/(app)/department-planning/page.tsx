@@ -224,8 +224,8 @@ export default function DepartmentPlanningPage() {
   const membershipOrgId = useActiveOrganizationId() ?? "";
   const identity = useProfessionalOrganizationIdentity(membershipOrgId);
   const orgId = identity.publicOrganizationId ?? "";
-  const [pageCursor, setPageCursor] = useState<string | null>(null);
-  const [previousCursors, setPreviousCursors] = useState<Array<string | null>>([]);
+  const [pageCursor, setPageCursor] = useState(0);
+  const [previousCursors, setPreviousCursors] = useState<number[]>([]);
   const inbox = usePlanningInbox(orgId, pageCursor);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const memberships = inbox.data?.items ?? [];
@@ -235,7 +235,7 @@ export default function DepartmentPlanningPage() {
 
   useEffect(() => {
     setSelectedCampaignId("");
-    setPageCursor(null);
+    setPageCursor(0);
     setPreviousCursors([]);
   }, [orgId]);
 
@@ -262,6 +262,16 @@ export default function DepartmentPlanningPage() {
     <ErrorState title="Department planning inbox unavailable"
       description={inbox.error instanceof Error ? inbox.error.message : "Access is not available for this membership."}
       retry={{label:"Retry",onClick:()=>void inbox.refetch()}} />
+  );
+  if (!memberships.length && inbox.data?.has_more && inbox.data.next_cursor != null) return (
+    <main className="space-y-5">
+      <PageHeader eyebrow="Department planning" title="Planning workspace"
+        description="No assigned campaign was found in this portion of the campaign index." />
+      <Button variant="secondary" onClick={() => {
+        setPreviousCursors(items => [...items, pageCursor]);
+        setPageCursor(inbox.data!.next_cursor!);
+      }}>Continue searching your authorized campaigns</Button>
+    </main>
   );
   if (!memberships.length) return (
     <main className="space-y-5">
@@ -299,13 +309,13 @@ export default function DepartmentPlanningPage() {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {previousCursors.length ? (
             <Button size="sm" variant="secondary" onClick={() => {
-              const last = previousCursors[previousCursors.length - 1] ?? null;
+              const last = previousCursors[previousCursors.length - 1] ?? 0;
               setPageCursor(last);
               setPreviousCursors(items => items.slice(0, -1));
               setSelectedCampaignId("");
             }}>Previous page</Button>
           ) : null}
-          {inbox.data?.has_more && inbox.data.next_cursor ? (
+          {inbox.data?.has_more && inbox.data.next_cursor != null ? (
             <Button size="sm" variant="secondary" onClick={() => {
               setPreviousCursors(items => [...items, pageCursor]);
               setPageCursor(inbox.data!.next_cursor);
