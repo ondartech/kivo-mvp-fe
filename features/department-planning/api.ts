@@ -170,3 +170,36 @@ export function planningComparison(
 export function labelState(code: string): string {
   return code.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, ch => ch.toUpperCase());
 }
+
+export type ContributorInbox = {
+  items: Array<{
+    assignment_id: string;
+    campaign_id: string;
+    unit_id: string;
+    category_key: string;
+    stage: string;
+    role: "OWNER" | "REVIEWER";
+    due_at: string;
+    authority: "PLAN_011_ASSIGNMENT_ONLY";
+  }>;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+};
+
+export function useContributorInbox(orgPublicId: string, offset = 0) {
+  const base = planningWorkspaceBase(orgPublicId);
+  return useQuery<ContributorInbox>({
+    queryKey: ["dplan-my-assignments", orgPublicId, offset],
+    enabled: Boolean(base),
+    queryFn: async () => response<ContributorInbox>(
+      await fetchWithAuth(
+        `${base}/workspace/my-assignments?limit=25&offset=${offset}`,
+        {method: "GET", cache: "no-store"},
+      ),
+    ),
+    retry: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+}
