@@ -224,7 +224,9 @@ export default function DepartmentPlanningPage() {
   const membershipOrgId = useActiveOrganizationId() ?? "";
   const identity = useProfessionalOrganizationIdentity(membershipOrgId);
   const orgId = identity.publicOrganizationId ?? "";
-  const inbox = usePlanningInbox(orgId);
+  const [pageCursor, setPageCursor] = useState<string | null>(null);
+  const [previousCursors, setPreviousCursors] = useState<Array<string | null>>([]);
+  const inbox = usePlanningInbox(orgId, pageCursor);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const memberships = inbox.data?.items ?? [];
   const currentCampaign = memberships.some(item => item.campaign_id === selectedCampaignId)
@@ -233,6 +235,8 @@ export default function DepartmentPlanningPage() {
 
   useEffect(() => {
     setSelectedCampaignId("");
+    setPageCursor(null);
+    setPreviousCursors([]);
   }, [orgId]);
 
   if (!membershipOrgId) return (
@@ -292,9 +296,23 @@ export default function DepartmentPlanningPage() {
             </option>
           ))}
         </select>
-        {inbox.data?.has_more ? <p className="mt-2 text-xs text-muted-foreground">
-          Additional campaigns exist beyond this bounded inbox. Contact the planning administrator for access.
-        </p> : null}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {previousCursors.length ? (
+            <Button size="sm" variant="secondary" onClick={() => {
+              const last = previousCursors[previousCursors.length - 1] ?? null;
+              setPageCursor(last);
+              setPreviousCursors(items => items.slice(0, -1));
+              setSelectedCampaignId("");
+            }}>Previous page</Button>
+          ) : null}
+          {inbox.data?.has_more && inbox.data.next_cursor ? (
+            <Button size="sm" variant="secondary" onClick={() => {
+              setPreviousCursors(items => [...items, pageCursor]);
+              setPageCursor(inbox.data!.next_cursor);
+              setSelectedCampaignId("");
+            }}>Next page of accessible campaigns</Button>
+          ) : null}
+        </div>
       </section>
 
       {workspace.isLoading ? (
