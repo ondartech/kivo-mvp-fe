@@ -143,6 +143,51 @@ function SourcePanel({unit}: {unit: PlanningUnit}) {
           ) : <p className="mt-2 text-sm text-muted-foreground">No source-verified DPLAN-013 comparison is available.</p>}
         </section>
 
+        <section className="grid gap-4 lg:grid-cols-3" aria-label="Department initiatives and cross-team handoffs">
+          <div className="rounded-md border p-4">
+            <h3 className="text-sm font-semibold">Initiatives &amp; requests</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Proposal evidence only, not a procurement or staffing approval.</p>
+            {unit.initiatives.length ? (
+              <ul className="mt-3 space-y-2">
+                {unit.initiatives.map(item => (
+                  <li key={item.id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs">Proposal register v{item.version}</span>
+                    <StatePill status={item.status}/>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="mt-3 text-xs text-muted-foreground">No published initiative register.</p>}
+          </div>
+          <div className="rounded-md border p-4">
+            <h3 className="text-sm font-semibold">Interdepartmental dependencies</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Receiver acknowledgments do not create spending authority.</p>
+            {unit.dependencies.length ? (
+              <ul className="mt-3 space-y-2">
+                {unit.dependencies.map(item => (
+                  <li key={item.id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs">{item.dependency_key}</span>
+                    <StatePill status={item.status}/>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="mt-3 text-xs text-muted-foreground">No scoped dependency requests.</p>}
+          </div>
+          <div className="rounded-md border p-4">
+            <h3 className="text-sm font-semibold">Clarifications &amp; evidence</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Requests linked to this department's planning packs.</p>
+            {unit.discussions.length ? (
+              <ul className="mt-3 space-y-2">
+                {unit.discussions.map(item => (
+                  <li key={item.id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs">{item.topic}</span>
+                    <StatePill status={item.status}/>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="mt-3 text-xs text-muted-foreground">No current discussion threads.</p>}
+          </div>
+        </section>
+
         {unit.replanning.length ? (
           <section>
             <h3 className="text-sm font-semibold">Mid-year replanning</h3>
