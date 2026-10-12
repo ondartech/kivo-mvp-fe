@@ -66,6 +66,9 @@ export type PlanningUnit = {
     status: string;
     authority: string;
   }>;
+  initiatives: Array<{id: string; version: number; status: string; authority: string}>;
+  dependencies: Array<{id: string; dependency_key: string; revision: number; status: string; authority: string}>;
+  discussions: Array<{id: string; topic: string; status: string; authority: string}>;
   blockers: string[];
   outstanding_actions: string[];
   source_integrity: "SNAPSHOT_VERIFIED" | "SOURCE_CHANGED" | "NOT_VERIFIED";
