@@ -15,6 +15,7 @@ import {
   planningComparison,
   usePlanningInbox,
   usePlanningWorkspace,
+  useContributorInbox,
   type PlanningUnit,
 } from "@/features/department-planning/api";
 
@@ -220,6 +221,41 @@ function SourcePanel({unit}: {unit: PlanningUnit}) {
   );
 }
 
+function ContributorList({
+  data, loading, onNext, onPrevious,
+}: {
+  data: ReturnType<typeof useContributorInbox>["data"];
+  loading: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+}) {
+  if (loading) return <div aria-busy="true" className="text-sm text-muted-foreground">Loading assigned planning work…</div>;
+  if (!data?.items.length) return null;
+  return (
+    <section className="rounded-lg border bg-surface p-4" aria-label="My assigned planning tasks">
+      <h2 className="text-sm font-semibold">My PLAN-011 assignments</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Category-specific work, not access to another department's planning pack.
+      </p>
+      <ul className="mt-3 space-y-2">
+        {data.items.map(item => (
+          <li key={item.assignment_id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+            <span className="text-sm font-medium">{item.category_key} · {labelState(item.role)}</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>Due {dateLabel(item.due_at)}</span>
+              <StatePill status={item.stage}/>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 flex gap-2">
+        <Button variant="secondary" size="sm" disabled={data.offset===0} onClick={onPrevious}>Previous</Button>
+        <Button variant="secondary" size="sm" disabled={!data.has_more} onClick={onNext}>Next</Button>
+      </div>
+    </section>
+  );
+}
+
 export default function DepartmentPlanningPage() {
   const membershipOrgId = useActiveOrganizationId() ?? "";
   const identity = useProfessionalOrganizationIdentity(membershipOrgId);
@@ -227,6 +263,8 @@ export default function DepartmentPlanningPage() {
   const [pageCursor, setPageCursor] = useState(0);
   const [previousCursors, setPreviousCursors] = useState<number[]>([]);
   const inbox = usePlanningInbox(orgId, pageCursor);
+  const [assignmentOffset,setAssignmentOffset] = useState(0);
+  const assignments = useContributorInbox(orgId,assignmentOffset);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const memberships = inbox.data?.items ?? [];
   const currentCampaign = memberships.some(item => item.campaign_id === selectedCampaignId)
@@ -237,6 +275,7 @@ export default function DepartmentPlanningPage() {
     setSelectedCampaignId("");
     setPageCursor(0);
     setPreviousCursors([]);
+    setAssignmentOffset(0);
   }, [orgId]);
 
   if (!membershipOrgId) return (
@@ -276,9 +315,17 @@ export default function DepartmentPlanningPage() {
   if (!memberships.length) return (
     <main className="space-y-5">
       <PageHeader eyebrow="Department planning" title="Planning workspace"
+        description="Your assigned departmental campaigns and individual PLAN-011 work." />
+      <ContributorList data={assignments.data} loading={assignments.isLoading}
+        onNext={() => setAssignmentOffset(value => value + 25)}
+        onPrevious={() => setAssignmentOffset(value => Math.max(0,value - 25))} />
+
+      <PageHeader eyebrow="Department planning" title="Planning workspace"
         description="Your assigned departmental campaigns and governed decisions." />
-      <EmptyState title="No accessible planning campaigns"
-        description="No published DPLAN campaign is assigned to your frozen ORG responsibility, named Finance review, or corporate approval mandate." />
+      {!assignments.isLoading && !assignments.data?.items.length ? (
+        <EmptyState title="No accessible planning campaigns"
+          description="No published campaign or PLAN-011 assignment is linked to your current membership." />
+      ) : null}
     </main>
   );
 
@@ -293,6 +340,9 @@ export default function DepartmentPlanningPage() {
           }}>Refresh</Button>
         } />
 
+      <ContributorList data={assignments.data} loading={assignments.isLoading}
+        onNext={() => setAssignmentOffset(value => value + 25)}
+        onPrevious={() => setAssignmentOffset(value => Math.max(0,value - 25))} />
       <section className="rounded-lg border bg-surface p-4" aria-label="Planning campaign selection">
         <label htmlFor="dplan-campaign" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Assigned campaign
