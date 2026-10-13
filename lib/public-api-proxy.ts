@@ -52,6 +52,10 @@ export async function proxyPublicApi(
   for (const name of [
     "content-type",
     "cache-control",
+    "content-disposition",
+    "x-content-type-options",
+    "content-security-policy",
+    "cross-origin-resource-policy",
     "etag",
     "location",
     "retry-after",

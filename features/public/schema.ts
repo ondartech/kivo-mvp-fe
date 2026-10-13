@@ -62,6 +62,21 @@ export const publicQuoteSchema = z.object({
   project_name: z.string().nullable().optional(),
 }).strict();
 
+export const publicEvidenceReviewSchema = z.object({
+  revision_number: z.number().int().positive(),
+  revision_hash: z.string().regex(/^[a-f0-9]{64}$/),
+  manifest_hash: z.string().regex(/^[a-f0-9]{64}$/),
+  artifacts: z.array(z.object({
+    ordinal: z.number().int().positive(),
+    artifact_id: z.string().uuid(),
+    content_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    media_type: z.string().nullable().optional(),
+    download_available: z.boolean(),
+  }).strict()),
+  all_downloadable: z.boolean(),
+  acknowledgement_is_not_proof_of_reading: z.boolean(),
+}).strict();
+
 export const publicAcceptanceSchema = z.object({
   merchant_name: z.string(),
   project_name: z.string(),
@@ -73,6 +88,7 @@ export const publicAcceptanceSchema = z.object({
   status: z.string(),
   decided_at: z.string().nullable().optional(),
   expires_at: z.string().nullable().optional(),
+  evidence_review: publicEvidenceReviewSchema.nullable().optional(),
 }).strict();
 
 export type PublicInvoice = z.infer<typeof publicInvoiceSchema>;
