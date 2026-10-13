@@ -15,12 +15,14 @@ export function PublicAcceptanceView({ token }: { token: string }) {
   const [acceptance, setAcceptance] = useState<PublicAcceptance | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [reason, setReason] = useState("");
+  const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
   const [mode, setMode] = useState<"idle" | "reject">("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    setReviewAcknowledged(false);
     getPublicAcceptance(token)
       .then((value) => {
         if (active) setAcceptance(value);
@@ -40,10 +42,24 @@ export function PublicAcceptanceView({ token }: { token: string }) {
   }, [token]);
 
   async function onAccept() {
+    if (acceptance?.evidence_review && (
+      !acceptance.evidence_review.all_downloadable || !reviewAcknowledged
+    )) {
+      setError("Review and acknowledge the current client evidence before accepting.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      setAcceptance(await acceptPublicAcceptance(token, customerName));
+      setAcceptance(await acceptPublicAcceptance(
+        token, customerName,
+        acceptance?.evidence_review
+          ? {
+              revision_hash: acceptance.evidence_review.revision_hash,
+              manifest_hash: acceptance.evidence_review.manifest_hash,
+            }
+          : undefined,
+      ));
     } catch (reasonValue) {
       setError(reasonValue instanceof Error ? reasonValue.message : "Unable to accept.");
     } finally {
@@ -108,6 +124,67 @@ export function PublicAcceptanceView({ token }: { token: string }) {
             </section>
           ) : null}
 
+          {acceptance.evidence_review ? (
+            <section className="mt-6 rounded-lg border p-4" aria-label="Client evidence review">
+              <h2 className="text-sm font-semibold">Client evidence package</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Revision {acceptance.evidence_review.revision_number}. The files listed below
+                are associated with the exact deliverable submitted for acceptance.
+              </p>
+              <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                <p className="break-all">Revision SHA-256: {acceptance.evidence_review.revision_hash}</p>
+                <p className="break-all">Evidence manifest SHA-256: {acceptance.evidence_review.manifest_hash}</p>
+              </div>
+              <ul className="mt-4 space-y-2">
+                {acceptance.evidence_review.artifacts.map((item) => (
+                  <li key={item.artifact_id} className="rounded border p-3 text-sm">
+                    <div className="font-medium">Evidence {item.ordinal}</div>
+                    <div className="mt-1 break-all text-xs text-muted-foreground">
+                      SHA-256: {item.content_hash}
+                    </div>
+                    {!decided && item.download_available ? (
+                      <a
+                        className="mt-2 inline-block font-medium underline underline-offset-4"
+                        href={`/api/public/acceptances/${encodeURIComponent(token)}/evidence/${encodeURIComponent(item.artifact_id)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open evidence file ({item.media_type})
+                      </a>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {decided ? "Review period closed." : "Document cannot be shared for client review."}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {!decided ? (
+                acceptance.evidence_review.all_downloadable ? (
+                  <label className="mt-4 flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={reviewAcknowledged}
+                      onChange={(event) => setReviewAcknowledged(event.target.checked)}
+                    />
+                    <span>
+                      I acknowledge this exact revision and evidence manifest as the
+                      material being accepted. This acknowledgement does not claim
+                      that every attachment was opened or read.
+                    </span>
+                  </label>
+                ) : (
+                  <p className="mt-4 text-sm text-critical">
+                    One or more documents are not available to the client.
+                    This deliverable cannot be accepted; contact the sender or reject
+                    the submission with an explanation.
+                  </p>
+                )
+              ) : null}
+            </section>
+          ) : null}
+
           <div className="mt-5 text-xs text-muted-foreground">
             Submitted {new Date(acceptance.submitted_at).toLocaleString()}
           </div>
@@ -152,7 +229,13 @@ export function PublicAcceptanceView({ token }: { token: string }) {
                 </form>
               ) : (
                 <div className="mt-4 flex gap-2">
-                  <Button loading={busy} onClick={onAccept}>Accept milestone</Button>
+                  <Button
+                    loading={busy}
+                    disabled={busy || Boolean(acceptance.evidence_review && (
+                      !acceptance.evidence_review.all_downloadable || !reviewAcknowledged
+                    ))}
+                    onClick={onAccept}
+                  >Accept milestone</Button>
                   <Button
                     disabled={busy}
                     onClick={() => setMode("reject")}
