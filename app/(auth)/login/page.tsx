@@ -43,11 +43,25 @@ export default function LoginPage() {
     try {
       const res = await fetchWithAuth(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
         method: "POST",
+        // Required for the backend's account-bound returning-user admission
+        // cookie across app.getondar.com and api.getondar.com. Does not grant
+        // authentication; the password remains mandatory.
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 429) {
+          const seconds = Math.min(
+            60,
+            Math.max(1, Number.parseInt(res.headers.get("Retry-After") || "1", 10) || 1),
+          );
+          throw new Error(`Sign-in traffic is unusually high. Try again in ${seconds} seconds.`);
+        }
+        if (res.status === 503) {
+          throw new Error("Sign-in is temporarily unavailable. Please try again shortly.");
+        }
         throw new Error(body?.error?.message || "Sign in failed");
       }
       // Persist tokens (BFF httpOnly will be set via Set-Cookie if backend does, but also store for lib/api-client localStorage compat)
