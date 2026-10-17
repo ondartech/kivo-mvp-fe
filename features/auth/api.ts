@@ -253,3 +253,47 @@ export async function unlinkMicrosoftAccount(): Promise<{ message: string }> {
     "Failed to unlink Microsoft account",
   );
 }
+
+
+// AUTH-RES-006 — provider-independent challenge handshake. Proof never authenticates.
+export type LoginChallengeStart = {
+  challenge_token: string;
+  attempt_id: string;
+  provider: "turnstile";
+  site_key: string;
+  expires_in: number;
+};
+
+export type LoginChallengeCompleted = { login_proof: string; expires_in: number };
+
+export async function startLoginChallenge(email: string): Promise<LoginChallengeStart> {
+  return requestJson<LoginChallengeStart>(
+    `${API}/api/v1/auth/admission/challenge/start`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    },
+    "Verification is temporarily unavailable",
+  );
+}
+
+export async function completeLoginChallenge(
+  email: string,
+  challenge: LoginChallengeStart,
+  providerToken: string,
+): Promise<LoginChallengeCompleted> {
+  return requestJson<LoginChallengeCompleted>(
+    `${API}/api/v1/auth/admission/challenge/complete`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        challenge_token: challenge.challenge_token,
+        provider_token: providerToken,
+      }),
+    },
+    "Verification could not be completed",
+  );
+}

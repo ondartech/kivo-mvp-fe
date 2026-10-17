@@ -8,7 +8,11 @@ import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { MicrosoftButton } from "@/components/auth/MicrosoftButton";
-import { beginOAuth, type OAuthProvider } from "@/features/auth/api";
+import {
+  beginOAuth, startLoginChallenge, completeLoginChallenge,
+  type LoginChallengeStart, type OAuthProvider,
+} from "@/features/auth/api";
+import { LoginChallenge } from "@/features/auth/login-challenge";
 import { fetchWithAuth } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import { writeExperienceScope } from "@/lib/experience/ask-runtime";
@@ -22,6 +26,76 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const [oauthLoading, setOAuthLoading] = React.useState<OAuthProvider | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [challengeRequired, setChallengeRequired] = React.useState(false);
+  const [challenge, setChallenge] = React.useState<LoginChallengeStart | null>(null);
+  const [challengeProof, setChallengeProof] = React.useState<string | null>(null);
+  const [challengeBusy, setChallengeBusy] = React.useState(false);
+  // Each provider callback is asynchronous. Accept only one redemption per
+  // challenge ticket; duplicate/late callbacks must not erase a valid proof.
+  const redeemingAttempt = React.useRef<string | null>(null);
+  const activeAttempt = React.useRef<string | null>(null);
+  const challengeGeneration = React.useRef(0);
+
+  const beginChallenge = async () => {
+    const generation = ++challengeGeneration.current;
+    setChallengeBusy(true);
+    setError(null);
+    setChallengeProof(null);
+    activeAttempt.current = null;
+    redeemingAttempt.current = null;
+    try {
+      const ticket = await startLoginChallenge(email);
+      if (challengeGeneration.current !== generation) return;
+      activeAttempt.current = ticket.attempt_id;
+      setChallenge(ticket);
+    } catch {
+      if (challengeGeneration.current === generation) {
+        setError("Verification cannot start right now. Please try again later.");
+      }
+    } finally {
+      if (challengeGeneration.current === generation) setChallengeBusy(false);
+    }
+  };
+
+  const acceptChallengeResponse = React.useCallback(async (token: string) => {
+    if (!challenge || activeAttempt.current !== challenge.attempt_id) return;
+    if (redeemingAttempt.current === challenge.attempt_id) return;
+    redeemingAttempt.current = challenge.attempt_id;
+    setChallengeBusy(true);
+    try {
+      const result = await completeLoginChallenge(email, challenge, token);
+      if (activeAttempt.current !== challenge.attempt_id) return;
+      activeAttempt.current = null;
+      setChallengeProof(result.login_proof);
+      setChallengeRequired(false);
+      setChallenge(null);
+      setError(null);
+    } catch {
+      if (activeAttempt.current !== challenge.attempt_id) return;
+      activeAttempt.current = null;
+      setChallenge(null);
+      setChallengeRequired(true);
+      setError("Verification was unsuccessful. Please start a new challenge.");
+    } finally {
+      if (activeAttempt.current === null) setChallengeBusy(false);
+      if (redeemingAttempt.current === challenge.attempt_id) {
+        redeemingAttempt.current = null;
+      }
+    }
+  }, [email, challenge]);
+
+  const failChallenge = React.useCallback((attemptId: string) => {
+    // Stale provider callbacks cannot invalidate a newer attempt or its proof.
+    if (
+      activeAttempt.current !== attemptId ||
+      redeemingAttempt.current !== null
+    ) return;
+    activeAttempt.current = null;
+    setChallenge(null);
+    setChallengeProof(null);
+    setChallengeRequired(true);
+    setError("Verification expired or could not load. Please try again.");
+  }, []);
 
   const handleOAuth = async (provider: OAuthProvider) => {
     setError(null);
@@ -41,17 +115,35 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
+      const attemptedProof = challengeProof;
       const res = await fetchWithAuth(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
         method: "POST",
         // Required for the backend's account-bound returning-user admission
         // cookie across app.getondar.com and api.getondar.com. Does not grant
         // authentication; the password remains mandatory.
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(attemptedProof ? { "X-Ondar-Login-Proof": attemptedProof } : {}),
+        },
         body: JSON.stringify({ email, password }),
       });
       const body = await res.json().catch(() => ({}));
+      // Proof is single-use even when the password is wrong.
+      if (attemptedProof) {
+        setChallengeProof(null);
+        setChallengeRequired(!res.ok);
+      }
       if (!res.ok) {
+        if (res.status === 429 && body?.error?.code === "LOGIN_CHALLENGE_REQUIRED") {
+          setChallengeRequired(true);
+          throw new Error("Sign-in is busy. Complete a verification challenge to continue.");
+        }
+        if (body?.error?.code === "LOGIN_CHALLENGE_REPLAYED" ||
+            body?.error?.code === "LOGIN_CHALLENGE_INVALID") {
+          setChallengeRequired(true);
+          throw new Error("Your verification expired. Please complete a new challenge.");
+        }
         if (res.status === 429) {
           const seconds = Math.min(
             60,
@@ -124,7 +216,15 @@ export default function LoginPage() {
                 placeholder="sola@acme.ng"
                 className="mt-1"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  ++challengeGeneration.current;
+                  activeAttempt.current = null;
+                  redeemingAttempt.current = null;
+                  setChallenge(null);
+                  setChallengeProof(null);
+                  setChallengeRequired(false);
+                }
                 required
                 autoComplete="email"
               />
@@ -147,7 +247,30 @@ export default function LoginPage() {
               />
             </div>
             {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
-            <Button type="submit" className="w-full" loading={loading}>
+            {challengeRequired && !challenge && !challengeProof && (
+              <Button
+                type="button" variant="outline" className="w-full"
+                disabled={challengeBusy} onClick={() => void beginChallenge()}
+              >
+                Verify to continue
+              </Button>
+            )}
+            {challenge && (
+              <LoginChallenge
+                challenge={challenge}
+                onResponse={acceptChallengeResponse}
+                onError={() => failChallenge(challenge.attempt_id)}
+              />
+            )}
+            {challengeProof && (
+              <p className="text-sm" role="status">
+                Verification complete. Select Sign in to continue.
+              </p>
+            )}
+            <Button
+              type="submit" className="w-full" loading={loading}
+              disabled={challengeBusy || Boolean(challenge)}
+            >
               Sign in
             </Button>
             <div className="text-center text-xs text-muted-foreground">
