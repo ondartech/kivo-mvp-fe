@@ -1,8 +1,23 @@
+import type {
+  PublicInvoicePaymentOptions,
+  PublicInvoicePaymentSession,
+  PublicInvoiceFeePreview,
+} from "@/features/public/schema";
+
+export type {
+  PublicInvoicePaymentOptions,
+  PublicInvoicePaymentSession,
+  PublicInvoiceFeePreview,
+} from "@/features/public/schema";
+
 import { fetchWithAuth } from "@/lib/api-client";
 import {
   publicAcceptanceSchema,
   publicInvoiceSchema,
   publicQuoteSchema,
+  publicInvoicePaymentOptionsSchema,
+  publicInvoicePaymentSessionSchema,
+  publicInvoiceFeePreviewSchema,
   type PublicAcceptance,
   type PublicInvoice,
   type PublicQuote,
@@ -101,4 +116,89 @@ export async function rejectPublicAcceptance(
   );
   if (!response.ok) throw await parseError(response);
   return publicAcceptanceSchema.parse(await response.json());
+}
+
+export async function getPublicInvoicePaymentOptions(
+  token: string,
+): Promise<PublicInvoicePaymentOptions> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-options`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicInvoicePaymentOptionsSchema.parse(await response.json());
+}
+
+export async function getPublicInvoicePaymentSession(
+  token: string,
+): Promise<PublicInvoicePaymentSession> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-session`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicInvoicePaymentSessionSchema.parse(await response.json());
+}
+
+export async function choosePublicInvoicePsp(
+  token: string,
+  connectionId: string,
+  expectedVersion: number,
+  idempotencyKey: string,
+): Promise<PublicInvoicePaymentSession> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-session/selections`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        connection_id: connectionId,
+        expected_version: expectedVersion,
+      }),
+    },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicInvoicePaymentSessionSchema.parse(await response.json());
+}
+
+export async function getPublicInvoicePspFeePreview(
+  token: string,
+): Promise<PublicInvoiceFeePreview> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-session/fee-preview`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicInvoiceFeePreviewSchema.parse(await response.json());
+}
+
+export async function acknowledgePublicInvoicePspFees(
+  token: string,
+  quote: PublicInvoiceFeePreview,
+  idempotencyKey: string,
+): Promise<{ state: string; checkout_enabled: boolean }> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-session/fee-consents`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        choice_version: quote.choice_version,
+        terms_sha256: quote.terms_sha256,
+        buyer_total: quote.buyer_total,
+      }),
+    },
+  );
+  if (!response.ok) throw await parseError(response);
+  const data = (await response.json()) as {
+    state: string;
+    checkout_enabled: boolean;
+  };
+  return data;
 }
