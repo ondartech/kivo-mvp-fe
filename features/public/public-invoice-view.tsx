@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPublicInvoice, type PublicInvoice } from "@/features/public/api";
+import { PublicInvoicePaymentMethods } from "@/features/public/public-invoice-payment-methods";
 
 function partyName(party: Record<string, unknown>, fallback: string): string {
   for (const key of ["display_name", "name", "legal_name", "business_name"]) {
@@ -136,6 +137,14 @@ export function PublicInvoiceView({ token }: { token: string }) {
               <MoneyAmount amount={amountDue} currency={invoice.currency} emphasis="table" />
             </div>
           </div>
+
+          {!settled && amountDue && invoice.currency === "NGN" ? (
+            <PublicInvoicePaymentMethods
+              token={token}
+              amountDue={amountDue}
+              currency={invoice.currency}
+            />
+          ) : null}
 
           {!settled && invoice.payment_url ? (
             <Button className="mt-6 w-full" size="lg" asChild>

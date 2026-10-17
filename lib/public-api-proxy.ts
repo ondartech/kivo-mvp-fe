@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 const FORWARDED_REQUEST_HEADERS = [
   "accept",
   "content-type",
+  "idempotency-key",
   "if-none-match",
   "x-request-id",
   "x-correlation-id",
