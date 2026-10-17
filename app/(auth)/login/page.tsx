@@ -34,8 +34,10 @@ export default function LoginPage() {
   // challenge ticket; duplicate/late callbacks must not erase a valid proof.
   const redeemingAttempt = React.useRef<string | null>(null);
   const activeAttempt = React.useRef<string | null>(null);
+  const challengeGeneration = React.useRef(0);
 
   const beginChallenge = async () => {
+    const generation = ++challengeGeneration.current;
     setChallengeBusy(true);
     setError(null);
     setChallengeProof(null);
@@ -43,12 +45,15 @@ export default function LoginPage() {
     redeemingAttempt.current = null;
     try {
       const ticket = await startLoginChallenge(email);
+      if (challengeGeneration.current !== generation) return;
       activeAttempt.current = ticket.attempt_id;
       setChallenge(ticket);
     } catch {
-      setError("Verification cannot start right now. Please try again later.");
+      if (challengeGeneration.current === generation) {
+        setError("Verification cannot start right now. Please try again later.");
+      }
     } finally {
-      setChallengeBusy(false);
+      if (challengeGeneration.current === generation) setChallengeBusy(false);
     }
   };
 
@@ -79,9 +84,12 @@ export default function LoginPage() {
     }
   }, [email, challenge]);
 
-  const failChallenge = React.useCallback(() => {
-    // Never erase a completed proof due to a late widget callback.
-    if (activeAttempt.current === null || redeemingAttempt.current !== null) return;
+  const failChallenge = React.useCallback((attemptId: string) => {
+    // Stale provider callbacks cannot invalidate a newer attempt or its proof.
+    if (
+      activeAttempt.current !== attemptId ||
+      redeemingAttempt.current !== null
+    ) return;
     activeAttempt.current = null;
     setChallenge(null);
     setChallengeProof(null);
@@ -210,6 +218,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
+                  ++challengeGeneration.current;
                   activeAttempt.current = null;
                   redeemingAttempt.current = null;
                   setChallenge(null);
@@ -250,7 +259,7 @@ export default function LoginPage() {
               <LoginChallenge
                 challenge={challenge}
                 onResponse={acceptChallengeResponse}
-                onError={failChallenge}
+                onError={() => failChallenge(challenge.attempt_id)}
               />
             )}
             {challengeProof && (
