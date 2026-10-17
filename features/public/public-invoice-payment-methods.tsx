@@ -139,7 +139,16 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
         continuing to its secure checkout.
       </p>
       <div role="group" aria-label="Available payment processors" className="mt-3 grid gap-2 sm:grid-cols-2">
-        {available.options.map((option) => {
+        {available.options.map((option, index) => {
+          const matchingAccounts = available.options.filter(
+            (item) => item.provider_key === option.provider_key,
+          );
+          const accountOrdinal = available.options.slice(0, index + 1).filter(
+            (item) => item.provider_key === option.provider_key,
+          ).length;
+          const publicLabel = matchingAccounts.length > 1
+            ? `${option.provider_name} · Account option ${accountOrdinal}`
+            : option.provider_name;
           const enabled = paymentExecutable && option.checkout_enabled;
           const chosen = selected === option.connection_id;
           return (
@@ -158,7 +167,7 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
               ].join(" ")}
             >
               <span className="flex items-center justify-between gap-3">
-                <span className="font-medium">{option.provider_name}</span>
+                <span className="font-medium">{publicLabel}</span>
                 {option.is_preferred ? (
                   <span className="text-xs text-muted-foreground">Seller preferred</span>
                 ) : null}
