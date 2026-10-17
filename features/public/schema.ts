@@ -34,6 +34,55 @@ export const publicInvoiceSchema = z.object({
   created_at: z.string(),
 });
 
+// IPACK-UI-002: public projections never contain PSP credentials or bank accounts.
+export const publicPspOptionSchema = z.object({
+  provider_key: z.string().min(1),
+  provider_name: z.string().min(1),
+  connection_id: z.string().min(1),
+  is_preferred: z.boolean(),
+  readiness: z.string(),
+  checkout_enabled: z.boolean(),
+});
+
+export const publicInvoicePaymentOptionsSchema = z.object({
+  invoice_number: z.string(),
+  currency: z.string().length(3),
+  checkout_enabled: z.boolean(),
+  options: z.array(publicPspOptionSchema),
+});
+
+export const publicInvoicePaymentSessionSchema = z.object({
+  state: z.string(),
+  version: z.number().int().min(0),
+  selected_provider: z.string().nullable(),
+  selected_connection_id: z.string().nullable(),
+  checkout_enabled: z.boolean(),
+  fee_quote_available: z.boolean(),
+});
+
+export const publicInvoiceFeePreviewSchema = z.object({
+  choice_version: z.number().int().positive(),
+  provider_key: z.string(),
+  connection_id: z.string(),
+  currency: z.string().length(3),
+  invoice_amount: z.string(),
+  provider_fee: z.string(),
+  ondar_fee: z.string(),
+  buyer_fee: z.string(),
+  merchant_fee: z.string(),
+  buyer_total: z.string(),
+  fee_payer: z.enum(["BUYER", "MERCHANT"]),
+  quote_valid_until: z.string(),
+  terms_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  checkout_enabled: z.boolean(),
+  fee_quote_available: z.boolean(),
+  is_frozen: z.boolean(),
+});
+
+export type PublicInvoicePaymentOptions = z.infer<typeof publicInvoicePaymentOptionsSchema>;
+export type PublicInvoicePaymentSession = z.infer<typeof publicInvoicePaymentSessionSchema>;
+export type PublicInvoiceFeePreview = z.infer<typeof publicInvoiceFeePreviewSchema>;
+
 export const publicQuoteLineSchema = z.object({
   description: z.string(),
   quantity: z.string(),
