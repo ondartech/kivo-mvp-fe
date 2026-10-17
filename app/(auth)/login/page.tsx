@@ -224,7 +224,7 @@ export default function LoginPage() {
                   setChallenge(null);
                   setChallengeProof(null);
                   setChallengeRequired(false);
-                }
+                }}
                 required
                 autoComplete="email"
               />
