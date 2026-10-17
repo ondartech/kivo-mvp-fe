@@ -30,13 +30,21 @@ export default function LoginPage() {
   const [challenge, setChallenge] = React.useState<LoginChallengeStart | null>(null);
   const [challengeProof, setChallengeProof] = React.useState<string | null>(null);
   const [challengeBusy, setChallengeBusy] = React.useState(false);
+  // Each provider callback is asynchronous. Accept only one redemption per
+  // challenge ticket; duplicate/late callbacks must not erase a valid proof.
+  const redeemingAttempt = React.useRef<string | null>(null);
+  const activeAttempt = React.useRef<string | null>(null);
 
   const beginChallenge = async () => {
     setChallengeBusy(true);
     setError(null);
     setChallengeProof(null);
+    activeAttempt.current = null;
+    redeemingAttempt.current = null;
     try {
-      setChallenge(await startLoginChallenge(email));
+      const ticket = await startLoginChallenge(email);
+      activeAttempt.current = ticket.attempt_id;
+      setChallenge(ticket);
     } catch {
       setError("Verification cannot start right now. Please try again later.");
     } finally {
@@ -45,24 +53,36 @@ export default function LoginPage() {
   };
 
   const acceptChallengeResponse = React.useCallback(async (token: string) => {
-    if (!challenge) return;
+    if (!challenge || activeAttempt.current !== challenge.attempt_id) return;
+    if (redeemingAttempt.current === challenge.attempt_id) return;
+    redeemingAttempt.current = challenge.attempt_id;
     setChallengeBusy(true);
     try {
       const result = await completeLoginChallenge(email, challenge, token);
+      if (activeAttempt.current !== challenge.attempt_id) return;
+      activeAttempt.current = null;
       setChallengeProof(result.login_proof);
       setChallengeRequired(false);
       setChallenge(null);
       setError(null);
     } catch {
+      if (activeAttempt.current !== challenge.attempt_id) return;
+      activeAttempt.current = null;
       setChallenge(null);
       setChallengeRequired(true);
       setError("Verification was unsuccessful. Please start a new challenge.");
     } finally {
-      setChallengeBusy(false);
+      if (activeAttempt.current === null) setChallengeBusy(false);
+      if (redeemingAttempt.current === challenge.attempt_id) {
+        redeemingAttempt.current = null;
+      }
     }
   }, [email, challenge]);
 
   const failChallenge = React.useCallback(() => {
+    // Never erase a completed proof due to a late widget callback.
+    if (activeAttempt.current === null || redeemingAttempt.current !== null) return;
+    activeAttempt.current = null;
     setChallenge(null);
     setChallengeProof(null);
     setChallengeRequired(true);
@@ -190,6 +210,8 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
+                  activeAttempt.current = null;
+                  redeemingAttempt.current = null;
                   setChallenge(null);
                   setChallengeProof(null);
                   setChallengeRequired(false);
