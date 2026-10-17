@@ -36,6 +36,10 @@ export function LoginChallenge({
 }) {
   const node = React.useRef<HTMLDivElement>(null);
   const widgetId = React.useRef<string | null>(null);
+  const responseCallback = React.useRef(onResponse);
+  const errorCallback = React.useRef(onError);
+  responseCallback.current = onResponse;
+  errorCallback.current = onError;
   const [scriptReady, setScriptReady] = React.useState(false);
 
   React.useEffect(() => {
@@ -44,9 +48,9 @@ export function LoginChallenge({
       sitekey: challenge.site_key,
       action: "ondar_login",
       cData: challenge.attempt_id,
-      callback: onResponse,
-      "error-callback": onError,
-      "expired-callback": onError,
+      callback: (token) => responseCallback.current(token),
+      "error-callback": () => errorCallback.current(),
+      "expired-callback": () => errorCallback.current(),
     });
     widgetId.current = id;
     return () => {
@@ -55,7 +59,7 @@ export function LoginChallenge({
         widgetId.current = null;
       }
     };
-  }, [scriptReady, challenge.attempt_id, challenge.site_key, onResponse, onError]);
+  }, [scriptReady, challenge.attempt_id, challenge.site_key]);
 
   return (
     <section aria-label="Additional sign-in verification" className="space-y-2">
