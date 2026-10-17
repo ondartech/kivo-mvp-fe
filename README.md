@@ -100,3 +100,41 @@ npm run test
 npm run build
 docker build --build-arg NEXT_PUBLIC_API_URL=https://api.getondar.com -t ondar-web:test .
 ```
+
+
+## AUTH-RES browser login protection — actions before release
+
+**The first-login / returning-user challenge flow is not release-certified.**
+Backend admission and first-login challenge are both disabled by default
+(`AUTH_ADMISSION_ENABLED=false`, `AUTH_CHALLENGE_ENABLED=false`).
+Ordinary password authentication remains mandatory after a challenge.
+
+### Actions for the product, QA and platform owners
+
+- [ ] Restore GitHub Actions runners and certify frontend
+  [returning-login PR #127](https://github.com/ondartech/kivo-mvp-fe/pull/127)
+  and [first-login challenge PR #128](https://github.com/ondartech/kivo-mvp-fe/pull/128)
+  with `npm ci`, `npm run lint`, `npm run typecheck`,
+  `npm run test`, `npm run build` and a real container build.
+- [ ] Test the login UI against staging API using
+  `https://app.getondar.com` / `https://api.getondar.com` or
+  environment-specific approved HTTPS equivalents. Verify
+  credentialed browser CORS, `X-Ondar-Login-Proof` preflight,
+  Secure HttpOnly host-only returning-user cookie, sign-in state and
+  recoverable 429 / 503 error handling.
+- [ ] Provision the managed Turnstile sitekey server-side configuration
+  and an independently protected Siteverify secret on the backend,
+  then test real challenge completion, expiry, wrong-email binding,
+  single-use proof, widget errors, duplicate callbacks, and stale
+  responses when the email changes.
+- [ ] Verify keyboard, screen reader, mobile, reduced-connectivity
+  and shared-NAT accessibility. Maintain a legitimate alternate sign-in
+  or support pathway; do not rely on CAPTCHA as the only option.
+- [ ] Coordinate staged flag enablement and abort/rollback plans
+  with the backend README checklist and [AUTH-RES infra #45](https://github.com/ondartech/kivo-mvp-infra/issues/45).
+  Test first-time and returning-user success and p95 under a permitted
+  multi-IP simulated attack before production rollout.
+
+This README is a release action list, **not a certification statement**.
+Merging this code does not mean the Cloudflare challenge provider,
+edge-origin isolation, Redis, or real-user SLA has passed validation.
