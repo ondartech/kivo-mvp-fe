@@ -2,13 +2,20 @@ import { fetchWithAuth } from "@/lib/api-client";
 import {
   publicAcceptanceSchema,
   publicInvoiceSchema,
+  publicMerchantPaymentOptionsSchema,
+  type PublicMerchantPaymentOptions,
   publicQuoteSchema,
   type PublicAcceptance,
   type PublicInvoice,
   type PublicQuote,
 } from "@/features/public/schema";
 
-export type { PublicAcceptance, PublicInvoice, PublicQuote } from "@/features/public/schema";
+export type {
+  PublicAcceptance,
+  PublicInvoice,
+  PublicQuote,
+  PublicMerchantPaymentOptions,
+} from "@/features/public/schema";
 
 type ErrorEnvelope = {
   error?: {
@@ -38,6 +45,17 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoice> {
   );
   if (!response.ok) throw await parseError(response);
   return publicInvoiceSchema.parse(await response.json());
+}
+
+export async function getPublicInvoicePaymentOptions(
+  token: string,
+): Promise<PublicMerchantPaymentOptions> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-options`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicMerchantPaymentOptionsSchema.parse(await response.json());
 }
 
 export async function getPublicQuote(token: string): Promise<PublicQuote> {
