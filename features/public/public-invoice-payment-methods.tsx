@@ -73,7 +73,7 @@ export function PublicInvoicePaymentMethods({
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, onExecutionAvailabilityChange]);
 
   if (!available || !session || available.options.length === 0) {
     return null;
