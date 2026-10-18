@@ -79,6 +79,31 @@ export const publicInvoiceFeePreviewSchema = z.object({
   is_frozen: z.boolean(),
 });
 
+// IPACK-UI-002B: status is not a financial receipt or a redirect URL.
+// No provider reference, credential, raw payment ID, or checkout URL is exposed.
+export const publicInvoiceCheckoutStatusSchema = z.object({
+  state: z.enum([
+    "CHOOSE_PROVIDER", "REVIEW_FEES", "CONSENT_ACKNOWLEDGED",
+    "AWAITING_INITIATION", "INITIATION_IN_PROGRESS",
+    "CHECKOUT_PREPARED", "REVIEW_REQUIRED", "PAYMENT_CONFIRMED",
+  ]),
+  provider_key: z.string().nullable(),
+  checkout_enabled: z.boolean(),
+  redirect_available: z.boolean(),
+  payment_confirmed: z.boolean(),
+}).strict().refine(
+  (value) => !value.redirect_available || (
+    value.checkout_enabled && value.state === "CHECKOUT_PREPARED"
+  ),
+  "Hosted checkout requires explicit server certification",
+).refine(
+  (value) => !value.payment_confirmed ||
+    value.state === "PAYMENT_CONFIRMED",
+  "Only authoritative Finance state may confirm payment",
+);
+export type PublicInvoiceCheckoutStatus =
+  z.infer<typeof publicInvoiceCheckoutStatusSchema>;
+
 export type PublicInvoicePaymentOptions = z.infer<typeof publicInvoicePaymentOptionsSchema>;
 export type PublicInvoicePaymentSession = z.infer<typeof publicInvoicePaymentSessionSchema>;
 export type PublicInvoiceFeePreview = z.infer<typeof publicInvoiceFeePreviewSchema>;
