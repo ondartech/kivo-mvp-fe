@@ -23,11 +23,14 @@ type Props = {
   token: string;
   amountDue: string;
   currency: string;
+  onExecutionAvailabilityChange?: (enabled: boolean) => void;
 };
 
 type PendingState = "selecting" | "consenting" | "initiating" | "refreshing" | null;
 
-export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Props) {
+export function PublicInvoicePaymentMethods({
+  token, amountDue, currency, onExecutionAvailabilityChange,
+}: Props) {
   const [available, setAvailable] = useState<PublicInvoicePaymentOptions | null>(null);
   const [session, setSession] = useState<PublicInvoicePaymentSession | null>(null);
   const [quote, setQuote] = useState<PublicInvoiceFeePreview | null>(null);
@@ -37,9 +40,11 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
   const [checkout, setCheckout] = useState<PublicInvoiceCheckoutStatus | null>(null);
   // Keep the same idempotency key through network failure and retry.
   const attemptKey = useRef<string | null>(null);
+  const consentKey = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    onExecutionAvailabilityChange?.(false);
     Promise.all([
       getPublicInvoicePaymentOptions(token),
       getPublicInvoicePaymentSession(token),
@@ -50,6 +55,11 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
         setAvailable(options);
         setSession(currentSession);
         setCheckout(currentCheckout);
+        onExecutionAvailabilityChange?.(
+          options.checkout_enabled &&
+          currentSession.checkout_enabled &&
+          options.options.some((item) => item.checkout_enabled),
+        );
       })
       .catch(() => {
         if (active) {
@@ -57,6 +67,7 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
           // Preserve legacy invoice payment behavior in that case.
           setAvailable(null);
           setSession(null);
+          onExecutionAvailabilityChange?.(false);
         }
       });
     return () => {
@@ -72,6 +83,10 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
   const paymentExecutable =
     available.checkout_enabled && session.checkout_enabled;
   const selected = session.selected_connection_id;
+  const lockedByAttempt = checkout !== null && [
+    "AWAITING_INITIATION", "INITIATION_IN_PROGRESS",
+    "CHECKOUT_PREPARED", "REVIEW_REQUIRED", "PAYMENT_CONFIRMED",
+  ].includes(checkout.state);
   const canAcknowledge =
     paymentExecutable &&
     quote !== null &&
@@ -88,6 +103,7 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
     setQuote(null);
     setAcknowledged(false);
     attemptKey.current = null;
+    consentKey.current = null;
     try {
       const chosen = await choosePublicInvoicePsp(
         token,
@@ -121,15 +137,18 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
     setError(null);
     try {
       const result = await acknowledgePublicInvoicePspFees(
-        token, quote, crypto.randomUUID(),
+        token, quote, (consentKey.current ??= crypto.randomUUID()),
       );
       if (result.state !== "ACKNOWLEDGED_NO_CHECKOUT") {
         throw new Error("Payment-fee acknowledgement could not be confirmed.");
       }
       // Fee acknowledgement is NOT a PSP payment and NOT proof of settlement.
       setAcknowledged(true);
-      const progress = await getPublicInvoiceCheckoutStatus(token);
-      setCheckout(progress);
+      try {
+        setCheckout(await getPublicInvoiceCheckoutStatus(token));
+      } catch {
+        // Consent succeeded; status failure cannot undo immutable server consent.
+      }
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -145,7 +164,7 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
     if (
       pending !== null || !acknowledged || !quote ||
       !paymentExecutable || !quote.checkout_enabled ||
-      checkout?.checkout_enabled !== true ||
+      checkout?.checkout_enabled !== true || !session ||
       quote.choice_version !== session.version
     ) return;
     setPending("initiating");
@@ -216,7 +235,8 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
           const publicLabel = matchingAccounts.length > 1
             ? `${option.provider_name} · Account option ${accountOrdinal}`
             : option.provider_name;
-          const enabled = paymentExecutable && option.checkout_enabled;
+          const enabled =
+            paymentExecutable && option.checkout_enabled && !lockedByAttempt;
           const chosen = selected === option.connection_id;
           return (
             <button
