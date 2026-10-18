@@ -4,6 +4,7 @@ import {
   publicInvoicePaymentOptionsSchema,
   publicInvoicePaymentSessionSchema,
   publicInvoiceFeePreviewSchema,
+  publicInvoiceCheckoutStatusSchema,
 } from "@/features/public/schema";
 
 describe("IPACK-UI-002 public PSP choice contracts", () => {
@@ -82,6 +83,70 @@ describe("IPACK-UI-002 public PSP choice contracts", () => {
     expect(publicInvoiceFeePreviewSchema.safeParse({
       ...preview,
       terms_sha256: "not-a-real-fee-fingerprint",
+    }).success).toBe(false);
+  });
+});
+
+
+describe("IPACK-UI-002B merchant PSP checkout progress", () => {
+  it("never treats a ready hosted checkout as confirmed payment", () => {
+    const state = publicInvoiceCheckoutStatusSchema.parse({
+      state: "CHECKOUT_PREPARED",
+      provider_key: "paystack",
+      checkout_enabled: false,
+      redirect_available: false,
+      payment_confirmed: false,
+    });
+    expect(state.payment_confirmed).toBe(false);
+  });
+
+  it("refuses a redirect unless explicitly allowed for prepared checkout", () => {
+    const base = {
+      state: "CHECKOUT_PREPARED",
+      provider_key: "monnify",
+      checkout_enabled: false,
+      redirect_available: true,
+      payment_confirmed: false,
+    };
+    expect(publicInvoiceCheckoutStatusSchema.safeParse(base).success).toBe(false);
+    expect(publicInvoiceCheckoutStatusSchema.safeParse({
+      ...base, checkout_enabled: true,
+    }).success).toBe(true);
+    expect(publicInvoiceCheckoutStatusSchema.safeParse({
+      ...base, checkout_enabled: true, state: "REVIEW_REQUIRED",
+    }).success).toBe(false);
+  });
+
+  it("forbids payment confirmation from a PSP redirect alone", () => {
+    const base = {
+      state: "INITIATION_IN_PROGRESS",
+      provider_key: "paystack",
+      checkout_enabled: false,
+      redirect_available: false,
+      payment_confirmed: true,
+    };
+    expect(publicInvoiceCheckoutStatusSchema.safeParse(base).success).toBe(false);
+    expect(publicInvoiceCheckoutStatusSchema.safeParse({
+      ...base, state: "PAYMENT_CONFIRMED",
+    }).success).toBe(true);
+  });
+
+  it("rejects provider references and sensitive checkout details", () => {
+    const base = {
+      state: "REVIEW_REQUIRED",
+      provider_key: null,
+      checkout_enabled: false,
+      redirect_available: false,
+      payment_confirmed: false,
+    };
+    expect(publicInvoiceCheckoutStatusSchema.safeParse({
+      ...base, merchant_secret: "should-never-render",
+    }).success).toBe(false);
+    expect(publicInvoiceCheckoutStatusSchema.safeParse({
+      ...base, provider_reference: "not-public",
+    }).success).toBe(false);
+    expect(publicInvoiceCheckoutStatusSchema.safeParse({
+      ...base, checkout_url: "https://example.invalid",
     }).success).toBe(false);
   });
 });
