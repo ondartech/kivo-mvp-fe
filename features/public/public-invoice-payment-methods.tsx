@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { MoneyAmount } from "@/components/kivo/money-amount";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,10 @@ import {
   getPublicInvoicePaymentOptions,
   getPublicInvoicePaymentSession,
   getPublicInvoicePspFeePreview,
+  getPublicInvoiceCheckoutStatus,
+  initiatePublicInvoiceCheckout,
+  certifiedPspCheckoutPath,
+  type PublicInvoiceCheckoutStatus,
   type PublicInvoiceFeePreview,
   type PublicInvoicePaymentOptions,
   type PublicInvoicePaymentSession,
@@ -21,7 +25,7 @@ type Props = {
   currency: string;
 };
 
-type PendingState = "selecting" | "consenting" | null;
+type PendingState = "selecting" | "consenting" | "initiating" | "refreshing" | null;
 
 export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Props) {
   const [available, setAvailable] = useState<PublicInvoicePaymentOptions | null>(null);
@@ -30,17 +34,22 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
   const [pending, setPending] = useState<PendingState>(null);
   const [error, setError] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [checkout, setCheckout] = useState<PublicInvoiceCheckoutStatus | null>(null);
+  // Keep the same idempotency key through network failure and retry.
+  const attemptKey = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
     Promise.all([
       getPublicInvoicePaymentOptions(token),
       getPublicInvoicePaymentSession(token),
+      getPublicInvoiceCheckoutStatus(token).catch(() => null),
     ])
-      .then(([options, currentSession]) => {
+      .then(([options, currentSession, currentCheckout]) => {
         if (!active) return;
         setAvailable(options);
         setSession(currentSession);
+        setCheckout(currentCheckout);
       })
       .catch(() => {
         if (active) {
@@ -78,6 +87,7 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
     setError(null);
     setQuote(null);
     setAcknowledged(false);
+    attemptKey.current = null;
     try {
       const chosen = await choosePublicInvoicePsp(
         token,
@@ -118,6 +128,8 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
       }
       // Fee acknowledgement is NOT a PSP payment and NOT proof of settlement.
       setAcknowledged(true);
+      const progress = await getPublicInvoiceCheckoutStatus(token);
+      setCheckout(progress);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -128,6 +140,61 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
       setPending(null);
     }
   }
+
+  async function initiateCheckout(): Promise<void> {
+    if (
+      pending !== null || !acknowledged || !quote ||
+      !paymentExecutable || !quote.checkout_enabled ||
+      checkout?.checkout_enabled !== true ||
+      quote.choice_version !== session.version
+    ) return;
+    setPending("initiating");
+    setError(null);
+    try {
+      attemptKey.current ??= crypto.randomUUID();
+      const result = await initiatePublicInvoiceCheckout(
+        token, quote, attemptKey.current,
+      );
+      setCheckout(result);
+      // A PSP payment can still be pending after a hosted checkout exists.
+      // No browser status may mark the invoice paid by itself.
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message :
+        "Unable to prepare secure checkout. Check payment status before retrying.");
+      try {
+        setCheckout(await getPublicInvoiceCheckoutStatus(token));
+      } catch {
+        // Retain the original initiation error; never choose another PSP.
+      }
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function refreshCheckoutStatus(): Promise<void> {
+    if (pending !== null) return;
+    setPending("refreshing");
+    setError(null);
+    try {
+      setCheckout(await getPublicInvoiceCheckoutStatus(token));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message :
+        "Unable to verify payment progress. Refresh the invoice.");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  const checkoutDescription: Record<PublicInvoiceCheckoutStatus["state"], string> = {
+    CHOOSE_PROVIDER: "Choose a processor to review its fees.",
+    REVIEW_FEES: "Review the current processor charges before continuing.",
+    CONSENT_ACKNOWLEDGED: "Payment charges acknowledged. No payment has been made.",
+    AWAITING_INITIATION: "Your payment request is reserved. Awaiting secure checkout.",
+    INITIATION_IN_PROGRESS: "Connecting to the processor. Do not retry payment.",
+    CHECKOUT_PREPARED: "A hosted checkout was prepared. Payment is not yet confirmed.",
+    REVIEW_REQUIRED: "Your previous payment attempt needs review. Do not pay again.",
+    PAYMENT_CONFIRMED: "Payment confirmed from Ondar's invoice records.",
+  };
 
   return (
     <section aria-labelledby="invoice-payment-methods" className="mt-6 border-t pt-5">
@@ -229,6 +296,37 @@ export function PublicInvoicePaymentMethods({ token, amountDue, currency }: Prop
         <p role="status" className="mt-3 text-sm">
           Fee acknowledgement recorded. No payment has been initiated.
         </p>
+      ) : null}
+      {acknowledged && quote && paymentExecutable &&
+       checkout?.checkout_enabled === true &&
+       quote.checkout_enabled && quote.choice_version === session.version &&
+       checkout.state === "CONSENT_ACKNOWLEDGED" ? (
+        <Button className="mt-3 w-full" type="button"
+          disabled={pending !== null}
+          onClick={() => void initiateCheckout()}>
+          Continue to secure checkout
+        </Button>
+      ) : null}
+      {checkout && !["CHOOSE_PROVIDER", "REVIEW_FEES"].includes(checkout.state) ? (
+        <div className="mt-3 space-y-2 text-sm" aria-live="polite">
+          <p role="status">{checkoutDescription[checkout.state]}</p>
+          {checkout.state !== "PAYMENT_CONFIRMED" ? (
+            <Button type="button" variant="outline" size="sm"
+              disabled={pending !== null}
+              onClick={() => void refreshCheckoutStatus()}>
+              Check payment status
+            </Button>
+          ) : null}
+          {checkout.state === "CHECKOUT_PREPARED" &&
+           checkout.checkout_enabled && checkout.redirect_available &&
+           paymentExecutable ? (
+            <Button type="button" asChild>
+              <a href={certifiedPspCheckoutPath(token)} rel="noreferrer">
+                Open verified processor checkout
+              </a>
+            </Button>
+          ) : null}
+        </div>
       ) : null}
       {error ? (
         <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>
