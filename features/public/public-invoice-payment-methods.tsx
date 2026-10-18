@@ -23,7 +23,7 @@ type Props = {
   token: string;
   amountDue: string;
   currency: string;
-  onExecutionAvailabilityChange?: (enabled: boolean) => void;
+  onExecutionAvailabilityChange?: (enabled: boolean | null) => void;
 };
 
 type PendingState = "selecting" | "consenting" | "initiating" | "refreshing" | null;
@@ -44,7 +44,8 @@ export function PublicInvoicePaymentMethods({
 
   useEffect(() => {
     let active = true;
-    onExecutionAvailabilityChange?.(false);
+    // Keep legacy checkout suppressed until PSP readiness is resolved.
+    onExecutionAvailabilityChange?.(null);
     Promise.all([
       getPublicInvoicePaymentOptions(token),
       getPublicInvoicePaymentSession(token),
