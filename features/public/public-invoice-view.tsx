@@ -20,6 +20,8 @@ function partyName(party: Record<string, unknown>, fallback: string): string {
 export function PublicInvoiceView({ token }: { token: string }) {
   const [invoice, setInvoice] = useState<PublicInvoice | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // null means PSP readiness is unresolved: do not show two checkout paths.
+  const [merchantPspExecutable, setMerchantPspExecutable] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -143,10 +145,12 @@ export function PublicInvoiceView({ token }: { token: string }) {
               token={token}
               amountDue={amountDue}
               currency={invoice.currency}
+              onExecutionAvailabilityChange={setMerchantPspExecutable}
             />
           ) : null}
 
-          {!settled && invoice.payment_url ? (
+          {!settled && invoice.payment_url &&
+           (invoice.currency !== "NGN" || merchantPspExecutable === false) ? (
             <Button className="mt-6 w-full" size="lg" asChild>
               <a href={invoice.payment_url}>
                 {invoice.payment_cta_label ?? "Pay invoice"} ·{" "}

@@ -56,6 +56,7 @@ export async function proxyPublicApi(
     "content-disposition",
     "x-content-type-options",
     "content-security-policy",
+    "referrer-policy",
     "cross-origin-resource-policy",
     "etag",
     "location",

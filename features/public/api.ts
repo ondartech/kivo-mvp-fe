@@ -2,12 +2,14 @@ import type {
   PublicInvoicePaymentOptions,
   PublicInvoicePaymentSession,
   PublicInvoiceFeePreview,
+  PublicInvoiceCheckoutStatus,
 } from "@/features/public/schema";
 
 export type {
   PublicInvoicePaymentOptions,
   PublicInvoicePaymentSession,
   PublicInvoiceFeePreview,
+  PublicInvoiceCheckoutStatus,
 } from "@/features/public/schema";
 
 import { fetchWithAuth } from "@/lib/api-client";
@@ -18,6 +20,7 @@ import {
   publicInvoicePaymentOptionsSchema,
   publicInvoicePaymentSessionSchema,
   publicInvoiceFeePreviewSchema,
+  publicInvoiceCheckoutStatusSchema,
   type PublicAcceptance,
   type PublicInvoice,
   type PublicQuote,
@@ -201,4 +204,46 @@ export async function acknowledgePublicInvoicePspFees(
     checkout_enabled: boolean;
   };
   return data;
+}
+
+
+// IPACK-UI-002B: no API returns a provider redirect URL; the hosted-checkout
+// route must be navigated directly only after server certification.
+export async function getPublicInvoiceCheckoutStatus(
+  token: string,
+): Promise<PublicInvoiceCheckoutStatus> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-session/attempt-status`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicInvoiceCheckoutStatusSchema.parse(await response.json());
+}
+
+export async function initiatePublicInvoiceCheckout(
+  token: string,
+  quote: PublicInvoiceFeePreview,
+  idempotencyKey: string,
+): Promise<PublicInvoiceCheckoutStatus> {
+  const response = await fetchWithAuth(
+    `/api/public/invoices/${encodeURIComponent(token)}/payment-session/checkout-attempts`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        choice_version: quote.choice_version,
+        terms_sha256: quote.terms_sha256,
+        buyer_total: quote.buyer_total,
+      }),
+    },
+  );
+  if (!response.ok) throw await parseError(response);
+  return publicInvoiceCheckoutStatusSchema.parse(await response.json());
+}
+
+export function certifiedPspCheckoutPath(token: string): string {
+  return `/api/public/invoices/${encodeURIComponent(token)}/payment-session/hosted-checkout`;
 }
