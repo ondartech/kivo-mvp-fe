@@ -34,6 +34,24 @@ export const publicInvoiceSchema = z.object({
   created_at: z.string(),
 });
 
+export const publicMerchantPaymentOptionSchema = z.object({
+  connection_id: z.string().min(1),
+  provider_key: z.string().min(1),
+  provider_name: z.string().min(1),
+  preferred: z.boolean(),
+  selectable: z.boolean(),
+  availability: z.enum(["CERTIFICATION_PENDING"]),
+}).strict();
+
+export const publicMerchantPaymentOptionsSchema = z.object({
+  currency: z.string().length(3),
+  chooser_enabled: z.boolean(),
+  options: z.array(publicMerchantPaymentOptionSchema),
+}).strict();
+
+export type PublicMerchantPaymentOptions =
+  z.infer<typeof publicMerchantPaymentOptionsSchema>;
+
 export const publicQuoteLineSchema = z.object({
   description: z.string(),
   quantity: z.string(),

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { MoneyAmount } from "@/components/kivo/money-amount";
+import { PublicInvoicePaymentChoices } from "@/features/public/public-invoice-payment-choices";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPublicInvoice, type PublicInvoice } from "@/features/public/api";
 
@@ -137,13 +137,14 @@ export function PublicInvoiceView({ token }: { token: string }) {
             </div>
           </div>
 
-          {!settled && invoice.payment_url ? (
-            <Button className="mt-6 w-full" size="lg" asChild>
-              <a href={invoice.payment_url}>
-                {invoice.payment_cta_label ?? "Pay invoice"} ·{" "}
-                <MoneyAmount amount={amountDue} currency={invoice.currency} emphasis="secondary" />
-              </a>
-            </Button>
+          {!settled ? (
+            <PublicInvoicePaymentChoices
+              token={token}
+              currency={invoice.currency}
+              amountDue={amountDue}
+              paymentUrl={invoice.payment_url}
+              paymentLabel={invoice.payment_cta_label}
+            />
           ) : null}
         </CardContent>
       </Card>
